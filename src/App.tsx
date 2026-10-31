@@ -1,868 +1,2170 @@
-import { motion, AnimatePresence } from 'motion/react';
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Power, Cpu, MemoryStick, Video, LayoutDashboard, RotateCcw, CheckCircle2, AlertCircle, Volume2, VolumeX, X } from 'lucide-react';
-
-type PartId = 'psu' | 'motherboard' | 'cpu' | 'ram' | 'gpu';
-
-interface Part {
-  id: PartId;
-  name: string;
-  icon: React.ReactNode;
-  description: string;
-}
-
-interface Step {
-  id: PartId;
-  instruction: string;
-  hint: string;
-}
-
-const PARTS: Record<PartId, Part> = {
-  psu: { id: 'psu', name: 'PSU', icon: <Power size={28} />, description: 'Power Supply Unit. Converts electrical power from an outlet into usable power for the internal components of the computer.' },
-  motherboard: { id: 'motherboard', name: 'Motherboard', icon: <LayoutDashboard size={28} />, description: 'The main circuit board that holds the CPU, RAM, and other components, allowing them to communicate with each other.' },
-  cpu: { id: 'cpu', name: 'CPU', icon: <Cpu size={28} />, description: 'Central Processing Unit. The primary component that acts as the "brain" of the computer, performing most of the processing.' },
-  ram: { id: 'ram', name: 'RAM', icon: <MemoryStick size={28} />, description: 'Random Access Memory. Provides high-speed temporary workspace so the CPU can store data that is actively being used.' },
-  gpu: { id: 'gpu', name: 'GPU', icon: <Video size={28} />, description: 'Graphics Processing Unit. Dedicated to accelerating the creation of 2D and 3D images and video.' },
-};
-
-const STEPS: Step[] = [
-  { id: 'psu', instruction: 'Start by installing the Power Supply Unit (PSU).', hint: 'PSU provides power. Its position is in the large compartment at the bottom.' },
-  { id: 'motherboard', instruction: 'Next, install the Motherboard into the case.', hint: 'The motherboard is the main circuit board. It takes up the most space.' },
-  { id: 'cpu', instruction: 'Now, insert the CPU into the motherboard socket.', hint: 'The brain of the computer. Its position is in the small square socket in the middle.' },
-  { id: 'ram', instruction: 'Install RAM into the memory slot.', hint: 'Temporary memory. Look for the long vertical slots next to the CPU.' },
-  { id: 'gpu', instruction: 'Finally, install the Graphics Card (GPU).', hint: 'Processes visuals. Its position is in the long horizontal PCIe slot below the CPU.' },
-];
-
-const AUDIO_TEXT: Record<string, string> = {
-  step_0: "First step, install the Power Supply or PSU to the bottom compartment.",
-  step_1: "Next, install the Motherboard into the main case.",
-  step_2: "Now, install the CPU into the square socket in the center of the Motherboard.",
-  step_3: "Next, install the RAM into the long vertical memory slots.",
-  step_4: "Finally, install the graphics card or GPU into the long slot below the CPU.",
-  complete: "Good job! The computer assembly has been successfully completed.",
-  error_sequence: "Wrong component. Pay attention to the assembly sequence instructions.",
-  error_location: "Inaccurate location. Ensure you put it in the correct position."
-};
-
-const QUESTIONS = [
-  { q: "Which component is considered the 'brain' of the computer?", options: ["Power Supply (PSU)", "Motherboard", "Central Processing Unit (CPU)", "Graphics Card (GPU)"], answer: 2 },
-  { q: "Where do you temporarily store data actively used by the CPU?", options: ["Hard Drive", "RAM", "GPU", "Motherboard"], answer: 1 },
-  { q: "Which component acts as the main communication hub for all other parts?", options: ["CPU", "Motherboard", "PSU", "RAM"], answer: 1 },
-  { q: "What is the main function of the PSU?", options: ["Processing graphics", "Storing data permanently", "Cooling the system", "Providing power to components"], answer: 3 },
-];
-
-type Scene = 'home' | 'theory' | 'simulation' | 'quiz';
-
-function CreatedVideo() {
-  return (
-    <div className="relative w-full h-full flex flex-col items-center justify-center bg-slate-950 overflow-hidden">
-      {/* Background Grid */}
-      <div className="absolute inset-0 z-0 bg-[radial-gradient(#06b6d4_1px,transparent_0)]" style={{ backgroundSize: '30px 30px', opacity: 0.1 }}></div>
-      
-      <div className="z-10 relative flex flex-col items-center justify-center w-full max-w-sm aspect-square bg-slate-900/50 border border-slate-700/50 rounded-xl overflow-hidden shadow-2xl">
-        <div className="absolute top-3 left-4 flex gap-2">
-          <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-          <span className="text-[10px] uppercase font-mono text-slate-500 tracking-widest">A.I. Generated Demo</span>
-        </div>
-        
-        {/* Motherboard Base */}
-        <motion.div
-          animate={{ scale: [0.95, 1, 1], opacity: [0, 1, 1] }}
-          transition={{ duration: 6, repeat: Infinity, times: [0, 0.1, 1] }}
-          className="w-48 h-64 border-2 border-slate-600 rounded-md relative flex flex-col justify-center items-center bg-slate-800"
-        >
-          {/* CPU Socket */}
-          <div className="w-16 h-16 border-2 border-slate-700/50 rounded flex items-center justify-center mb-4">
-             {/* CPU dropping in */}
-             <motion.div 
-               animate={{ y: [-50, 0, 0], opacity: [0, 1, 1] }}
-               transition={{ duration: 6, repeat: Infinity, times: [0, 0.2, 1], delay: 1 }}
-               className="w-12 h-12 bg-slate-200 border-2 border-slate-400 rounded-sm flex items-center justify-center shadow-[0_0_15px_rgba(255,255,255,0.5)] z-20"
-             >
-               <Cpu size={24} className="text-slate-900" />
-             </motion.div>
-          </div>
-          
-          {/* RAM Slots */}
-          <div className="flex gap-2 mb-6">
-            <div className="w-2 h-24 border border-slate-700/50 rounded-sm overflow-hidden relative">
-              <motion.div
-                animate={{ y: [-100, 0, 0], opacity: [0, 1, 1] }}
-                transition={{ duration: 6, repeat: Infinity, times: [0, 0.2, 1], delay: 2 }}
-                className="w-full h-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]"
-              ></motion.div>
-            </div>
-            <div className="w-2 h-24 border border-slate-700/50 rounded-sm overflow-hidden relative">
-              <motion.div
-                animate={{ y: [-100, 0, 0], opacity: [0, 1, 1] }}
-                transition={{ duration: 6, repeat: Infinity, times: [0, 0.2, 1], delay: 2.2 }}
-                className="w-full h-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]"
-              ></motion.div>
-            </div>
-          </div>
-          
-          {/* GPU Slot */}
-          <div className="w-32 h-4 border border-slate-700/50 rounded-sm relative overflow-visible">
-            <motion.div
-              animate={{ x: [-100, 0, 0], opacity: [0, 1, 1] }}
-              transition={{ duration: 6, repeat: Infinity, times: [0, 0.2, 1], delay: 3 }}
-              className="absolute inset-y-0 -left-4 w-40 h-8 bg-slate-700 border border-slate-500 rounded flex items-center justify-center shadow-lg z-30"
-            >
-              <Video size={16} className="text-cyan-400" />
-            </motion.div>
-          </div>
-        </motion.div>
-      </div>
-      
-      {/* Playback Controls Fake */}
-      <div className="absolute bottom-4 left-0 w-full px-8 flex flex-col gap-2 z-20">
-        <motion.div 
-          animate={{ width: ['0%', '100%'] }}
-          transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
-          className="h-1 bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.8)]"
-        ></motion.div>
-        <div className="flex justify-between items-center text-xs font-mono text-slate-500">
-          <span>0:00</span>
-          <span>AUTOPLAY_SEQ</span>
-          <span>0:06</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function HomeScene({ onStart }: { onStart: (s: Scene) => void }) {
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center relative bg-[radial-gradient(circle_at_center,_#1e293b_0%,_#020617_100%)] p-4 md:p-8 w-full h-full overflow-y-auto">
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none z-0 fixed" style={{ backgroundImage: 'radial-gradient(#06b6d4 1px, transparent 0)', backgroundSize: '40px 40px' }}></div>
-      <div className="z-10 text-center max-w-4xl bg-slate-900/40 border border-cyan-500/30 p-6 md:p-12 rounded-2xl backdrop-blur-md shadow-[0_0_50px_rgba(6,182,212,0.1)] w-full my-8">
-        <Cpu size={64} className="text-cyan-400 mx-auto mb-6 drop-shadow-[0_0_15px_rgba(34,211,238,0.5)]" />
-        <h1 className="text-3xl md:text-4xl font-bold tracking-widest uppercase text-white mb-4">Virtual Lab <span className="text-cyan-400">PC Assembly</span></h1>
-        <p className="text-slate-400 mb-8 leading-relaxed max-w-2xl mx-auto">Welcome to the advanced simulation environment. Here you will learn the theoretical concepts and practical skills necessary to assemble a modern computer system.</p>
-        
-        <div className="relative w-full aspect-video mb-8 rounded-lg overflow-hidden border border-cyan-500/20 shadow-[0_0_30px_rgba(34,211,238,0.15)] bg-slate-950 flex items-center justify-center">
-          <CreatedVideo />
-        </div>
-
-        <button onClick={() => onStart('theory')} className="px-8 py-3 bg-cyan-500/20 border border-cyan-400 text-cyan-300 font-bold uppercase tracking-widest hover:bg-cyan-500/40 hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] transition-all rounded">Start System</button>
-      </div>
-    </div>
-  );
-}
-
-function TheoryScene() {
-  return (
-    <div className="flex-1 flex flex-col overflow-y-auto p-8 relative bg-[radial-gradient(circle_at_center,_#1e293b_0%,_#020617_100%)] w-full h-full items-center">
-      <div className="max-w-4xl mx-auto z-10 relative mt-8">
-        <h2 className="text-2xl font-bold text-cyan-400 tracking-widest uppercase mb-8 border-b border-cyan-500/20 pb-4">Theoretical Background</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {Object.values(PARTS).map(part => (
-            <div key={part.id} className="bg-slate-900/60 border border-slate-700 p-6 rounded-lg hover:border-cyan-500/50 transition-colors flex flex-col items-center text-center">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-16 h-16 flex items-center justify-center bg-slate-800 rounded border border-slate-700 text-cyan-400 shadow-inner">
-                  {part.icon}
-                </div>
-              </div>
-              <h3 className="text-lg font-bold text-slate-200 uppercase tracking-widest mb-2">{part.name}</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">{part.description}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function QuizScene() {
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [score, setScore] = useState(0);
-  const [showResult, setShowResult] = useState(false);
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [feedback, setFeedback] = useState<'correct' | 'incorrect' | null>(null);
-
-  const handleAnswer = (index: number) => {
-    if (feedback) return; // Prevent double click
-    setSelectedAnswer(index);
-    const isCorrect = index === QUESTIONS[currentQuestion].answer;
-    setFeedback(isCorrect ? 'correct' : 'incorrect');
-    if (isCorrect) setScore(s => s + 1);
-
-    setTimeout(() => {
-      setFeedback(null);
-      setSelectedAnswer(null);
-      if (currentQuestion < QUESTIONS.length - 1) {
-        setCurrentQuestion(q => q + 1);
-      } else {
-        setShowResult(true);
+import {
+  useState,
+  useEffect,
+  useRef,
+  lazy,
+  Suspense,
+  type FormEvent,
+  type ReactNode,
+} from "react";
+import {
+  LayoutDashboard,
+  FlaskConical,
+  Route,
+  ChartNoAxesCombined,
+  Images,
+  GraduationCap,
+  Search,
+  ChevronLeft,
+  ArrowUpLeft,
+  ArrowLeft,
+  Check,
+  Lock,
+  Play,
+  Monitor,
+  Cpu,
+  MemoryStick,
+  Power,
+  Wrench,
+  BookOpen,
+  LogIn,
+  LogOut,
+  X,
+  CheckCircle2,
+  AlertTriangle,
+  RotateCcw,
+  ArrowUp,
+  ArrowDown,
+  Download,
+  ZoomIn,
+  Cloud,
+  HardDrive,
+  Menu,
+  ShieldCheck,
+  Volume2,
+} from "lucide-react";
+import {
+  labs,
+  weeks,
+  phases,
+  emptyWeek,
+  mastery,
+  type Progress,
+  type Week,
+  type Phase,
+  type WeekProgress,
+} from "./curriculum";
+import {
+  api,
+  request,
+  type User,
+  type PublicCaseState,
+  type QuizResult,
+} from "./api";
+import type { CaseState } from "./cases";
+import type { Question, PublicQuestion } from "./questions";
+const AssemblyLab = lazy(() => import("./AssemblyLab"));
+const image = (name: string) => `${import.meta.env.BASE_URL}images/${name}`;
+const icons = [Cpu, Power, MemoryStick, Monitor, Wrench];
+const ar = (n: number) => n.toLocaleString("ar-SA");
+function readGuest(): Progress {
+  try {
+    const raw = JSON.parse(localStorage.getItem("itqan-pc-guest-v1") || "{}");
+    const p: Progress = {};
+    for (const w of weeks) {
+      const r = raw[w.id];
+      if (r && typeof r === "object") {
+        p[w.id] = {
+          trained: r.trained === true,
+          discovered: r.discovered === true,
+          applied: r.applied === true,
+          quizScore:
+            typeof r.quizScore === "number" && Number.isFinite(r.quizScore)
+              ? Math.min(100, Math.max(0, r.quizScore))
+              : 0,
+          mastered: false,
+          assembly: r.assembly === true,
+          report:
+            typeof r.report === "string" ? r.report.slice(0, 4000) : undefined,
+        };
+        p[w.id].mastered = mastery(p[w.id], w.id);
       }
-    }, 1500);
-  };
-
-  const resetQuiz = () => {
-    setCurrentQuestion(0);
-    setScore(0);
-    setShowResult(false);
-    setSelectedAnswer(null);
-    setFeedback(null);
-  };
-
+    }
+    return p;
+  } catch {
+    return {};
+  }
+}
+function IconButton({
+  label,
+  onClick,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center relative bg-[radial-gradient(circle_at_center,_#1e293b_0%,_#020617_100%)] p-8 w-full h-full">
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none z-0" style={{ backgroundImage: 'radial-gradient(#06b6d4 1px, transparent 0)', backgroundSize: '40px 40px' }}></div>
-      <div className="z-10 w-full max-w-2xl bg-slate-900/40 border border-cyan-500/30 p-10 rounded-2xl backdrop-blur-md">
-        {!showResult ? (
-          <div>
-            <div className="flex justify-between items-center border-b border-cyan-500/20 pb-4 mb-6">
-              <h2 className="text-xl font-bold tracking-widest text-cyan-400 uppercase">Knowledge Evaluation</h2>
-              <span className="text-sm font-mono text-slate-400">P_0{currentQuestion + 1}/0{QUESTIONS.length}</span>
-            </div>
-            <p className="text-lg text-slate-200 mb-8">{QUESTIONS[currentQuestion].q}</p>
-            <div className="space-y-3">
-              {QUESTIONS[currentQuestion].options.map((opt, i) => {
-                let btnStyle = "border-slate-700 bg-slate-800/40 hover:bg-slate-800/80 hover:border-cyan-500/50 text-slate-300";
-                if (selectedAnswer === i) {
-                  if (feedback === 'correct') btnStyle = "border-emerald-500 bg-emerald-500/20 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]";
-                  if (feedback === 'incorrect') btnStyle = "border-red-500 bg-red-500/20 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.3)]";
-                } else if (selectedAnswer !== null && i === QUESTIONS[currentQuestion].answer) {
-                  btnStyle = "border-emerald-500/50 bg-emerald-500/10 text-emerald-400 opacity-50";
-                }
-
-                return (
-                  <button
-                    key={i}
-                    onClick={() => handleAnswer(i)}
-                    disabled={feedback !== null}
-                    className={`w-full text-left p-4 rounded border transition-all duration-300 flex items-center gap-4 group ${btnStyle}`}
-                  >
-                    <div className="w-6 h-6 border rounded-sm flex items-center justify-center font-mono text-xs opacity-50 group-hover:opacity-100">{String.fromCharCode(65 + i)}</div>
-                    <span>{opt}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <CheckCircle2 size={64} className="text-emerald-400 mx-auto mb-6 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
-            <h2 className="text-3xl font-bold tracking-widest uppercase text-white mb-2">Evaluation Complete</h2>
-            <p className="text-slate-400 mb-6">Your final score is <span className="text-cyan-400 font-bold font-mono text-lg">{score}</span> out of {QUESTIONS.length}</p>
-            <button onClick={resetQuiz} className="px-6 py-2 border border-slate-700 hover:border-cyan-500 text-sm font-mono transition-colors rounded text-slate-300">Retry Quiz</button>
-          </div>
-        )}
-      </div>
-    </div>
+    <button
+      className="icon-button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+    >
+      {children}
+    </button>
   );
 }
-
-function InfoModal({ part, onClose }: { part: Part; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-[#020617]/80 backdrop-blur-sm" onClick={onClose}></div>
-      <div className="bg-slate-900 border border-cyan-500/50 p-6 rounded-xl relative z-10 max-w-sm w-full shadow-[0_0_30px_rgba(34,211,238,0.2)]">
-        <button onClick={onClose} className="absolute top-4 right-4 text-slate-500 hover:text-white"><X size={20}/></button>
-        <div className="flex items-center gap-4 mb-4">
-          <div className="text-cyan-400 p-3 bg-slate-800 rounded border border-slate-700">{part.icon}</div>
-          <h3 className="text-xl font-bold text-white uppercase tracking-widest">{part.name}</h3>
-        </div>
-        <p className="text-slate-300 text-sm leading-relaxed">{part.description}</p>
-      </div>
-    </div>
-  );
-}
-
-function QuizModal({ onClose }: { onClose: () => void }) {
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [score, setScore] = useState(0);
-  const [showResult, setShowResult] = useState(false);
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [feedback, setFeedback] = useState<'correct' | 'incorrect' | null>(null);
-
-  const handleAnswer = (index: number) => {
-    if (feedback) return;
-    setSelectedAnswer(index);
-    const isCorrect = index === QUESTIONS[currentQuestion].answer;
-    setFeedback(isCorrect ? 'correct' : 'incorrect');
-    if (isCorrect) setScore(s => s + 1);
-
-    setTimeout(() => {
-      setFeedback(null);
-      setSelectedAnswer(null);
-      if (currentQuestion < QUESTIONS.length - 1) {
-        setCurrentQuestion(q => q + 1);
-      } else {
-        setShowResult(true);
+function Modal({
+  title,
+  onClose,
+  children,
+  wide = false,
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+  wide?: boolean;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const close = useRef(onClose);
+  close.current = onClose;
+  useEffect(() => {
+    const old = document.activeElement as HTMLElement;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    ref.current?.focus();
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close.current();
+      if (e.key === "Tab") {
+        const focusable = Array.from(
+          ref.current?.querySelectorAll<HTMLElement>(
+            'button:not(:disabled),input,textarea,select,[tabindex="0"]',
+          ) || [],
+        );
+        const first = focusable[0],
+          last = focusable.at(-1);
+        if (!focusable.length) {
+          e.preventDefault();
+          return;
+        }
+        if (
+          e.shiftKey &&
+          (document.activeElement === first ||
+            document.activeElement === ref.current)
+        ) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
       }
-    }, 1500);
-  };
-
-  const resetQuiz = () => {
-    setCurrentQuestion(0);
-    setScore(0);
-    setShowResult(false);
-    setSelectedAnswer(null);
-    setFeedback(null);
-  };
-
+    };
+    document.addEventListener("keydown", key);
+    return () => {
+      document.body.style.overflow = overflow;
+      document.removeEventListener("keydown", key);
+      old?.focus();
+    };
+  }, []);
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-[#020617]/80 backdrop-blur-sm" onClick={onClose}></div>
-      <div className="z-10 w-full max-w-2xl bg-slate-900 border border-cyan-500/50 p-10 rounded-2xl shadow-[0_0_50px_rgba(34,211,238,0.15)] relative">
-        <button onClick={onClose} className="absolute top-6 right-6 text-slate-500 hover:text-white transition-colors"><X size={24} /></button>
-        {!showResult ? (
-          <div>
-            <div className="flex justify-between items-center border-b border-cyan-500/20 pb-4 mb-6">
-              <h2 className="text-xl font-bold tracking-widest text-cyan-400 uppercase">Knowledge Evaluation</h2>
-              <span className="text-sm font-mono text-slate-400">P_0{currentQuestion + 1}/0{QUESTIONS.length}</span>
-            </div>
-            <p className="text-lg text-slate-200 mb-8">{QUESTIONS[currentQuestion].q}</p>
-            <div className="space-y-3">
-              {QUESTIONS[currentQuestion].options.map((opt, i) => {
-                let btnStyle = "border-slate-700 bg-slate-800/40 hover:bg-slate-800/80 hover:border-cyan-500/50 text-slate-300";
-                if (selectedAnswer === i) {
-                  if (feedback === 'correct') btnStyle = "border-emerald-500 bg-emerald-500/20 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]";
-                  if (feedback === 'incorrect') btnStyle = "border-red-500 bg-red-500/20 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.3)]";
-                } else if (selectedAnswer !== null && i === QUESTIONS[currentQuestion].answer) {
-                  btnStyle = "border-emerald-500/50 bg-emerald-500/10 text-emerald-400 opacity-50";
-                }
-
-                return (
-                  <button
-                    key={i}
-                    onClick={() => handleAnswer(i)}
-                    disabled={feedback !== null}
-                    className={`w-full text-left p-4 rounded border transition-all duration-300 flex items-center gap-4 group ${btnStyle}`}
-                  >
-                    <div className="w-6 h-6 border rounded-sm flex items-center justify-center font-mono text-xs opacity-50 group-hover:opacity-100">{String.fromCharCode(65 + i)}</div>
-                    <span>{opt}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <CheckCircle2 size={64} className="text-emerald-400 mx-auto mb-6 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
-            <h2 className="text-3xl font-bold tracking-widest uppercase text-white mb-2">Evaluation Complete</h2>
-            <p className="text-slate-400 mb-8">Your final score is <span className="text-cyan-400 font-bold font-mono text-lg">{score}</span> out of {QUESTIONS.length}</p>
-            <div className="flex justify-center gap-4">
-              <button onClick={resetQuiz} className="px-6 py-2 border border-slate-700 hover:border-cyan-500 text-sm font-mono transition-colors rounded text-slate-300">Retry Quiz</button>
-              <button onClick={onClose} className="px-6 py-2 bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-500 text-cyan-400 text-sm font-mono transition-colors rounded">Close</button>
-            </div>
-          </div>
-        )}
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className={`modal ${wide ? "wide" : ""}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        tabIndex={-1}
+        ref={ref}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="modal-head">
+          <h2>{title}</h2>
+          <IconButton label="إغلاق" onClick={onClose}>
+            <X size={20} />
+          </IconButton>
+        </div>
+        {children}
       </div>
     </div>
   );
 }
-
 export default function App() {
-  const [currentScene, setCurrentScene] = useState<Scene>('home');
-  const [currentStep, setCurrentStep] = useState(0);
-  const [installedParts, setInstalledParts] = useState<PartId[]>([]);
-  const [attempts, setAttempts] = useState(0);
-  const [mistakes, setMistakes] = useState(0);
-  const [feedback, setFeedback] = useState<{ message: string; type: 'success' | 'error' | null }>({ message: '', type: null });
-  const [selectedPart, setSelectedPart] = useState<PartId | null>(null);
-  const [infoModalPart, setInfoModalPart] = useState<PartId | null>(null);
-  const [showQuizModal, setShowQuizModal] = useState(false);
-  const [isAudioEnabled, setIsAudioEnabled] = useState(false);
-
-  const audioEnabledRef = useRef(isAudioEnabled);
+  const [view, setView] = useState("dashboard");
+  const [labFilter, setLabFilter] = useState<number | null>(null);
+  const [week, setWeek] = useState<Week | null>(null);
+  const [phase, setPhase] = useState<Phase>("train");
+  const [guest, setGuest] = useState<Progress>(readGuest);
+  const [central, setCentral] = useState<Progress>({});
+  const [user, setUser] = useState<User | null>(null);
+  const [login, setLogin] = useState(false);
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [assembly, setAssembly] = useState(false);
+  const [search, setSearch] = useState("");
+  const [mobile, setMobile] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [healthy, setHealthy] = useState(false);
+  const progress = user ? central : guest;
+  const completed = weeks.filter((w) => progress[w.id]?.mastered).length;
+  const percent = Math.round((completed / 19) * 100);
+  const next = weeks.find((w) => !progress[w.id]?.mastered) || weeks[18];
   useEffect(() => {
-    audioEnabledRef.current = isAudioEnabled;
-  }, [isAudioEnabled]);
-
-  const speak = useCallback((textKey: string, force = false) => {
-    if (!force && !audioEnabledRef.current) return;
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const textToSpeak = AUDIO_TEXT[textKey] || textKey;
-      const utterance = new SpeechSynthesisUtterance(textToSpeak);
-      utterance.lang = 'en-US';
-      
-      const voices = window.speechSynthesis.getVoices();
-      const enVoice = voices.find(v => v.lang.startsWith('en'));
-      if (enVoice) utterance.voice = enVoice;
-
-      window.speechSynthesis.speak(utterance);
+    try {
+      localStorage.setItem("itqan-pc-guest-v1", JSON.stringify(guest));
+    } catch {
+      setNotice("التخزين المحلي غير متاح في هذا المتصفح؛ تقدم التجربة مؤقت.");
     }
+  }, [guest]);
+  useEffect(() => {
+    request("/health")
+      .then(() => setHealthy(true))
+      .catch(() => setHealthy(false));
   }, []);
-
-  const toggleAudio = () => {
-    const newState = !isAudioEnabled;
-    setIsAudioEnabled(newState);
-    if (newState) {
-        const isComplete = installedParts.length === STEPS.length;
-        if (isComplete) {
-            speak('complete', true);
-        } else {
-            speak(`step_${currentStep}`, true);
-        }
-    } else {
-        window.speechSynthesis.cancel();
-    }
-  };
-
-  // Load state from local storage on mount
   useEffect(() => {
-    const saved = localStorage.getItem('pc-assembly-progress-v2');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      setCurrentStep(parsed.currentStep || 0);
-      setInstalledParts(parsed.installedParts || []);
-      setAttempts(parsed.attempts || 0);
-      setMistakes(parsed.mistakes || 0);
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(""), 7000);
+    return () => clearTimeout(t);
+  }, [notice]);
+  const notify = (s: string) => setNotice(s);
+  function patch(id: number, value: Partial<WeekProgress>) {
+    setGuest((old) => {
+      const p = { ...(old[id] || emptyWeek()), ...value };
+      p.mastered = mastery(p, id);
+      return { ...old, [id]: p };
+    });
+  }
+  async function save(action: () => Promise<{ progress: Progress }>) {
+    setSaving(true);
+    try {
+      const r = await action();
+      setCentral(r.progress);
+      return true;
+    } catch (e) {
+      notify((e as Error).message);
+      return false;
+    } finally {
+      setSaving(false);
     }
-  }, []);
-
-  // Save state to local storage when it changes
-  useEffect(() => {
-    localStorage.setItem('pc-assembly-progress-v2', JSON.stringify({ currentStep, installedParts, attempts, mistakes }));
-  }, [currentStep, installedParts, attempts, mistakes]);
-
-  const handleDragStart = (e: React.DragEvent, partId: PartId) => {
-    e.dataTransfer.setData('partId', partId);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const processDrop = (draggedPartId: PartId, targetSlotId: PartId) => {
-    if (!draggedPartId || installedParts.includes(draggedPartId)) {
-        setSelectedPart(null);
-        return;
-    }
-
-    setAttempts(a => a + 1);
-    setSelectedPart(null);
-
-    const expectedPartId = STEPS[currentStep].id;
-
-    if (draggedPartId === expectedPartId && targetSlotId === expectedPartId) {
-      // Success
-      setInstalledParts(prev => [...prev, draggedPartId]);
-      setFeedback({ message: 'Component Installed', type: 'success' });
-      
-      // Auto-advance after a short delay
-      setTimeout(() => {
-        setFeedback({ message: '', type: null });
-        if (currentStep < STEPS.length - 1) {
-          setCurrentStep(s => {
-             const nextStep = s + 1;
-             speak(`step_${nextStep}`);
-             return nextStep;
-          });
-        } else {
-            speak('complete');
-        }
-      }, 1500);
-    } else if (draggedPartId !== expectedPartId) {
-      // Wrong part for this step
-      setMistakes(m => m + 1);
-      speak('error_sequence');
-      setFeedback({ message: `Sequence Error: Requires ${PARTS[expectedPartId].name} next.`, type: 'error' });
-      setTimeout(() => setFeedback({ message: '', type: null }), 3000);
-    } else {
-      // Right part, wrong slot
-      setMistakes(m => m + 1);
-      speak('error_location');
-      setFeedback({ message: `Location Error: Invalid placement.`, type: 'error' });
-      setTimeout(() => setFeedback({ message: '', type: null }), 3000);
-    }
-  };
-
-  const handleDragDrop = (e: React.DragEvent, targetSlotId: PartId) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const draggedPartId = e.dataTransfer.getData('partId') as PartId;
-    processDrop(draggedPartId, targetSlotId);
-  };
-
-  const handleSlotClick = (e: React.MouseEvent, targetSlotId: PartId) => {
-    e.stopPropagation();
-    if (selectedPart) {
-        processDrop(selectedPart, targetSlotId);
-    }
-  };
-
-  const handleReset = () => {
-    setCurrentStep(0);
-    setInstalledParts([]);
-    setAttempts(0);
-    setMistakes(0);
-    setFeedback({ message: '', type: null });
-    setSelectedPart(null);
-    speak('step_0');
-  };
-
-  const isComplete = installedParts.length === STEPS.length;
-  const progress = (installedParts.length / STEPS.length) * 100;
-
+  }
+  function openWeek(w: Week) {
+    setWeek(w);
+    const p = progress[w.id] || emptyWeek();
+    setPhase(
+      !p.trained
+        ? "train"
+        : !p.discovered
+          ? "discover"
+          : !p.applied
+            ? "apply"
+            : p.quizScore < 80
+              ? "test"
+              : "master",
+    );
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  function navigate(v: string) {
+    setView(v);
+    setWeek(null);
+    setLabFilter(null);
+    setSearch("");
+    setMobile(false);
+  }
+  async function training() {
+    if (!week) return;
+    if (user) {
+      if (!(await save(() => api.train(week.id)))) return;
+    } else patch(week.id, { trained: true });
+    setPhase("discover");
+  }
+  function exportProgress() {
+    const rows = [
+      ["الأسبوع", "الموضوع", "تدرّب", "اكتشف", "طبّق", "أفضل اختبار", "أتقن"],
+      ...weeks.map((w) => {
+        const p = progress[w.id] || emptyWeek();
+        return [
+          w.id,
+          w.title,
+          p.trained ? "نعم" : "لا",
+          p.discovered ? "نعم" : "لا",
+          p.applied ? "نعم" : "لا",
+          p.quizScore,
+          p.mastered ? "نعم" : "لا",
+        ];
+      }),
+    ];
+    const csv =
+      "\uFEFF" +
+      rows
+        .map((r) =>
+          r.map((x) => '"' + String(x).replace(/"/g, '""') + '"').join(","),
+        )
+        .join("\r\n");
+    const url = URL.createObjectURL(
+      new Blob([csv], { type: "text/csv;charset=utf-8" }),
+    );
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "تقدم-صيانة-الحاسب.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+  const active = week ? progress[week.id] || emptyWeek() : emptyWeek();
+  const title = week
+    ? week.title
+    : {
+        dashboard: "مساحتك للتعلّم",
+        labs: "المختبرات التعليمية",
+        path: "مسارك في ١٩ أسبوعًا",
+        results: "نتائجك ومهاراتك",
+        library: "المكتبة البصرية",
+        trainer: "متابعة المتدربين",
+      }[view] || "مساحتك للتعلّم";
+  const filteredWeeks = weeks.filter(
+    (w) =>
+      (!labFilter || w.lab === labFilter) &&
+      (!search ||
+        `${w.title} ${w.objective} ${w.id} ${labs[w.lab - 1].title}`.includes(
+          search,
+        )),
+  );
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-200 font-sans selection:bg-cyan-500/30 flex flex-col overflow-hidden">
-      {/* Header */}
-      <header className="h-16 border-b border-cyan-500/20 bg-slate-900/50 flex items-center justify-between px-4 md:px-8 backdrop-blur-md z-40 relative">
-        <div className="flex items-center gap-2 md:gap-3 flex-1">
-          <div className="shrink-0 w-6 h-6 md:w-8 md:h-8 bg-cyan-500 rounded-sm flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.5)]">
-            <Cpu size={16} className="text-slate-950" />
-          </div>
-          <h1 className="hidden md:block text-sm lg:text-lg font-bold tracking-tight uppercase text-cyan-400 whitespace-nowrap">
-            Virtual Lab <span className="text-slate-500 font-normal ml-1">// Assembly</span>
-          </h1>
-        </div>
-        
-        {/* Universal Navigation Menu */}
-        <nav className="flex gap-1 md:gap-2 lg:gap-4 shrink-0 justify-center flex-1 lg:flex-none">
-          {([{id:'home', label:'Home'}, {id:'theory', label:'Theory'}, {id:'simulation', label:'Simulation'}, {id:'quiz', label:'Quiz'}] as const).map(scene => (
-            <button 
-              key={scene.id}
-              onClick={() => setCurrentScene(scene.id as Scene)}
-              className={`px-3 py-4 font-mono text-[10px] md:text-xs uppercase tracking-widest border-b-2 transition-colors whitespace-nowrap ${currentScene === scene.id ? 'border-cyan-400 text-cyan-400' : 'border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-700'}`}
+    <div className="app-shell">
+      <aside
+        className={`sidebar ${mobile ? "mobile-open" : ""}`}
+        aria-label="القائمة الرئيسية"
+      >
+        <a
+          className="brand"
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            navigate("dashboard");
+          }}
+        >
+          <span className="brand-mark">
+            <Cpu size={26} />
+          </span>
+          <span>
+            <strong>
+              إتقان<span className="brand-dot">.</span>
+            </strong>
+            <small>مختبرات صيانة الحاسب</small>
+          </span>
+        </a>
+        <div className="sidebar-label">بيئة التعلّم</div>
+        <nav>
+          {[
+            { id: "dashboard", label: "لوحة التعلّم", icon: LayoutDashboard },
+            { id: "labs", label: "المختبرات", icon: FlaskConical },
+            { id: "path", label: "المسار الأسبوعي", icon: Route },
+            {
+              id: "results",
+              label: "نتائجي ومهاراتي",
+              icon: ChartNoAxesCombined,
+            },
+            { id: "library", label: "المكتبة البصرية", icon: Images },
+            ...(user?.role === "trainer"
+              ? [
+                  {
+                    id: "trainer",
+                    label: "متابعة المتدربين",
+                    icon: GraduationCap,
+                  },
+                ]
+              : []),
+          ].map((n) => (
+            <button
+              key={n.id}
+              className={view === n.id && !week ? "active" : ""}
+              onClick={() => navigate(n.id)}
             >
-              {scene.label}
+              <n.icon size={19} />
+              <span>{n.label}</span>
+              {n.id === "labs" && <small>٥</small>}
             </button>
           ))}
         </nav>
-
-        <div className="flex items-center justify-end gap-3 md:gap-6 text-sm flex-1">
-          {currentScene === 'simulation' && (
+        <div className="sidebar-course">
+          <div className="course-symbol">
+            <GraduationCap size={24} />
+          </div>
+          <strong>مهارة اليوم، مهنة الغد</strong>
+          <p>تعلّم بالتجربة، واكتشف الحل بنفسك.</p>
+          <button onClick={() => navigate("path")}>
+            استكشف مسارك <ArrowUpLeft size={16} />
+          </button>
+        </div>
+        <div className="sidebar-bottom">
+          <div className={`status-dot ${user ? "online" : ""}`} />
+          <span>{user ? "حساب متصل بالخادم" : "وضع التجربة المحلية"}</span>
+          <small>الإصدار ١.٠</small>
+        </div>
+      </aside>
+      {mobile && (
+        <button
+          className="sidebar-scrim"
+          aria-label="إغلاق القائمة"
+          onClick={() => setMobile(false)}
+        />
+      )}
+      <div className="main-shell">
+        <header className="topbar">
+          <div className="breadcrumb">
+            <IconButton label="فتح القائمة" onClick={() => setMobile(!mobile)}>
+              <Menu size={21} />
+            </IconButton>
+            <span>المنظومة المهنية التفاعلية</span>
+            <ChevronLeft size={14} />
+            <strong>{week ? "المختبر " + ar(week.lab) : "صيانة الحاسب"}</strong>
+          </div>
+          <div className="top-actions">
+            <label className="search-box">
+              <Search size={17} />
+              <input
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setWeek(null);
+                  setView("path");
+                }}
+                placeholder="ابحث عن مهارة أو أسبوع…"
+                aria-label="البحث في المسار"
+              />
+              {search && (
+                <button aria-label="مسح البحث" onClick={() => setSearch("")}>
+                  <X size={14} />
+                </button>
+              )}
+            </label>
+            <button
+              className="profile"
+              onClick={() => (user ? navigate("results") : setLogin(true))}
+            >
+              <span className="avatar">
+                {user ? user.name.slice(0, 1) : "م"}
+              </span>
+              <span>
+                <strong>{user ? user.name : "مرحبًا، متدرّب"}</strong>
+                <small>
+                  {user ? "رقم " + user.trainingNumber : "استكشف ثم سجّل دخولك"}
+                </small>
+              </span>
+            </button>
+            {user && (
+              <IconButton
+                label="تسجيل الخروج"
+                onClick={async () => {
+                  if (
+                    await (async () => {
+                      try {
+                        await api.logout();
+                        return true;
+                      } catch (e) {
+                        notify((e as Error).message);
+                        return false;
+                      }
+                    })()
+                  ) {
+                    setUser(null);
+                    setCentral({});
+                    setWeek(null);
+                    navigate("dashboard");
+                  }
+                }}
+              >
+                <LogOut size={17} />
+              </IconButton>
+            )}
+          </div>
+        </header>
+        <main id="main-content" className="content">
+          <div className="page-heading">
+            <div>
+              <span className="eyebrow">تعلّم عملي. أثر يدوم.</span>
+              <h1>{title}</h1>
+              <p>
+                {week
+                  ? `الأسبوع ${ar(week.id)} · ${labs[week.lab - 1].title}`
+                  : "كل عطل فرصة لتفهم أكثر، وكل تجربة خطوة نحو الإتقان."}
+              </p>
+            </div>
+            <div className="heading-meta">
+              {week ? (
+                <button
+                  className="button subtle"
+                  onClick={() => {
+                    setWeek(null);
+                    setView("path");
+                  }}
+                >
+                  العودة إلى المسار <ArrowLeft size={16} />
+                </button>
+              ) : (
+                <span>
+                  <span className="tiny-dot" />
+                  مسار تدريبي · ١٩ أسبوعًا
+                </span>
+              )}
+            </div>
+          </div>
+          {!user && (
+            <div className="demo-note">
+              <HardDrive size={15} />
+              <span>تجربة محلية: التقدم محفوظ في هذا المتصفح فقط.</span>
+              <button onClick={() => setLogin(true)}>
+                الدخول للحفظ المركزي <ArrowUpLeft size={14} />
+              </button>
+            </div>
+          )}
+          {user && (
+            <div className="sync-note">
+              <Cloud size={14} />
+              {saving
+                ? "جارٍ الحفظ في قاعدة البيانات…"
+                : "التقدم المعروض من حسابك المركزي"}
+              <span>لا يُنقل تقدم التجربة إلى الحساب تلقائيًا.</span>
+            </div>
+          )}
+          {week ? (
             <>
-              <div className="hidden md:flex flex-col items-end">
-                <span className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Attempts</span>
-                <span className="font-bold font-mono text-lg text-slate-200">{attempts}</span>
+              <div className="phase-track">
+                {phases.map((s, i) => {
+                  const available =
+                    i === 0 ||
+                    (i === 1 && active.trained) ||
+                    (i === 2 && active.discovered) ||
+                    (i === 3 && active.applied) ||
+                    i === 4;
+                  const done = [
+                    active.trained,
+                    active.discovered,
+                    active.applied,
+                    active.quizScore >= 80,
+                    active.mastered,
+                  ][i];
+                  return (
+                    <button
+                      key={s.id}
+                      className={`${phase === s.id ? "selected" : ""} ${done ? "done" : ""}`}
+                      disabled={!available}
+                      onClick={() => setPhase(s.id)}
+                    >
+                      <span>{done ? <Check size={16} /> : ar(i + 1)}</span>
+                      <div>
+                        <strong>{s.label}</strong>
+                        <small>{s.detail}</small>
+                      </div>
+                      {!available && <Lock size={13} />}
+                    </button>
+                  );
+                })}
               </div>
-              <div className="hidden md:flex flex-col items-end">
-                <span className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Mistakes</span>
-                <span className="font-bold font-mono text-lg text-red-500">{mistakes}</span>
-              </div>
-              <button 
-                onClick={handleReset}
-                className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 border border-slate-700 hover:border-cyan-500 text-[10px] md:text-xs font-mono transition-colors rounded text-slate-300 ml-0 md:ml-4"
-              >
-                <RotateCcw size={14} /> <span className="hidden md:inline">RESET_LAB</span>
-              </button>
-              <button
-                onClick={toggleAudio}
-                className={`p-1.5 md:p-2 border rounded transition-colors ${isAudioEnabled ? 'border-cyan-500 text-cyan-400 bg-cyan-500/10' : 'border-slate-700 text-slate-500 hover:text-slate-300'}`}
-                title="Toggle Audio Instructions"
-                aria-label="Toggle Audio Instructions"
-              >
-                {isAudioEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-              </button>
+              {phase === "train" && (
+                <Training
+                  key={week.id}
+                  week={week}
+                  onComplete={training}
+                  saving={saving}
+                  zoom={setPhoto}
+                  done={active.trained}
+                />
+              )}
+              {(phase === "discover" || phase === "apply") && (
+                <CasePanel
+                  key={`${week.id}-${phase}-${user?.trainingNumber || "guest"}`}
+                  week={week}
+                  stage={phase}
+                  connected={!!user}
+                  onProgress={setCentral}
+                  onLocalPassed={() =>
+                    patch(week.id, {
+                      [phase === "discover" ? "discovered" : "applied"]: true,
+                    })
+                  }
+                  onNext={() =>
+                    setPhase(phase === "discover" ? "apply" : "test")
+                  }
+                  notify={notify}
+                  zoom={setPhoto}
+                />
+              )}
+              {phase === "test" && (
+                <QuizPanel
+                  key={`${week.id}-${user?.trainingNumber || "guest"}`}
+                  week={week}
+                  connected={!!user}
+                  onProgress={setCentral}
+                  onLocalScore={(score) =>
+                    patch(week.id, {
+                      quizScore: Math.max(active.quizScore, score),
+                    })
+                  }
+                  onNext={() => setPhase("master")}
+                  notify={notify}
+                />
+              )}
+              {phase === "master" && (
+                <div className="master-layout">
+                  <section className="panel mastery-card">
+                    <div
+                      className={`mastery-icon ${active.mastered ? "earned" : ""}`}
+                    >
+                      <ShieldCheck size={44} />
+                    </div>
+                    <span className="eyebrow">حصيلة الأسبوع {ar(week.id)}</span>
+                    <h2>
+                      {active.mastered
+                        ? "خطوة جديدة نحو الإتقان!"
+                        : "أكمل أدلة إتقانك"}
+                    </h2>
+                    <p>{labs[week.lab - 1].skill}</p>
+                    <div className="mastery-checks">
+                      {[
+                        {
+                          label: "فهم المحتوى وإتمام التدريب",
+                          done: active.trained,
+                          go: "train",
+                        },
+                        {
+                          label: "جمع الأدلة وتحديد السبب",
+                          done: active.discovered,
+                          go: "discover",
+                        },
+                        {
+                          label: "إصلاح الحالة والتحقق دون خطأ حرج",
+                          done: active.applied,
+                          go: "apply",
+                        },
+                        {
+                          label: `اختبار معرفي: ${ar(active.quizScore)}٪ / المطلوب ٨٠٪`,
+                          done: active.quizScore >= 80,
+                          go: "test",
+                        },
+                      ].map((c) => (
+                        <button
+                          key={c.go}
+                          onClick={() => setPhase(c.go as Phase)}
+                          disabled={
+                            (c.go === "discover" && !active.trained) ||
+                            (c.go === "apply" && !active.discovered) ||
+                            (c.go === "test" && !active.applied)
+                          }
+                        >
+                          <span className={c.done ? "check yes" : "check"}>
+                            {c.done ? <Check size={15} /> : <span />}
+                          </span>
+                          {c.label}
+                          <ChevronLeft size={15} />
+                        </button>
+                      ))}
+                      {week.id === 4 && (
+                        <button onClick={() => setAssembly(true)}>
+                          <span
+                            className={active.assembly ? "check yes" : "check"}
+                          >
+                            {active.assembly && <Check size={15} />}
+                          </span>
+                          إكمال مختبر التجميع التفاعلي
+                          <ChevronLeft size={15} />
+                        </button>
+                      )}
+                    </div>
+                    {active.mastered && week.id < 19 && (
+                      <button
+                        className="button primary"
+                        onClick={() => openWeek(weeks[week.id])}
+                      >
+                        الأسبوع التالي <ArrowLeft size={17} />
+                      </button>
+                    )}
+                    <small className="muted">
+                      اعتماد المنصة يدل على إنجاز الأنشطة؛ التطبيق على أجهزة
+                      المعمل يقيّمه المدرب.
+                    </small>
+                  </section>
+                  {week.id >= 16 ? (
+                    <Report
+                      key={week.id}
+                      done={!!active.report}
+                      saved={active.report}
+                      onSave={async (report) =>
+                        user
+                          ? await save(() => api.report(week.id, report))
+                          : (patch(week.id, {
+                              report: JSON.stringify(report),
+                            }),
+                            true)
+                      }
+                    />
+                  ) : (
+                    <section className="panel note-panel">
+                      <BookOpen size={26} />
+                      <h3>من الشاشة إلى المعمل</h3>
+                      <p>
+                        نفّذ المهارة على جهاز المعمل وفق تعليمات المدرب، ثم فسّر
+                        سبب اختيارك لكل فحص.
+                      </p>
+                      <h4>تذكّر قبل التطبيق</h4>
+                      {week.checks.map((c) => (
+                        <p className="small-check" key={c}>
+                          <Check size={16} />
+                          {c}
+                        </p>
+                      ))}
+                    </section>
+                  )}
+                </div>
+              )}
+              {week.id === 4 && phase === "apply" && (
+                <button
+                  className="button secondary assembly-launch"
+                  onClick={() => setAssembly(true)}
+                >
+                  <Cpu size={20} />
+                  افتح مختبر التجميع الأصلي المطوّر
+                  {active.assembly && <CheckCircle2 size={18} />}
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              {view === "dashboard" && (
+                <>
+                  <div className="welcome-grid">
+                    <section className="hero">
+                      <img
+                        src={image("hero.png")}
+                        alt="صورة توضيحية مولدة للوحة حاسب ومكوناتها على منضدة عمل"
+                      />
+                      <div className="hero-shade" />
+                      <div className="hero-copy">
+                        <span className="hero-tag">
+                          <span />
+                          تعلّم بالممارسة
+                        </span>
+                        <h2>
+                          لا تحفظ الحل.
+                          <br />
+                          تعلّم كيف <em>تكتشفه.</em>
+                        </h2>
+                        <p>
+                          خمسة مختبرات مترابطة تأخذك من معرفة
+                          <br className="desktop-break" /> المكونات إلى احتراف
+                          تشخيص الأعطال.
+                        </p>
+                        <button
+                          className="button primary"
+                          onClick={() => openWeek(next)}
+                        >
+                          {completed ? "واصل رحلتك" : "ابدأ رحلتك الآن"}
+                          <ArrowLeft size={18} />
+                        </button>
+                        <span className="hero-footnote">
+                          تدرّب بثقة في بيئة محاكاة آمنة
+                        </span>
+                      </div>
+                      <div className="hero-caption">
+                        <span />
+                        HARDWARE LAB <small>01 / 05</small>
+                      </div>
+                    </section>
+                    <section className="panel journey-card">
+                      <div className="card-heading">
+                        <span>رحلتك نحو الإتقان</span>
+                        <Route size={18} />
+                      </div>
+                      <div
+                        className="progress-ring"
+                        style={
+                          {
+                            "--progress": `${percent * 3.6}deg`,
+                          } as React.CSSProperties
+                        }
+                      >
+                        <div>
+                          <strong>
+                            {ar(percent)}
+                            <small>٪</small>
+                          </strong>
+                          <span>من المسار مكتمل</span>
+                        </div>
+                      </div>
+                      <div className="journey-count">
+                        <span>
+                          <strong>{ar(completed)}</strong> أسبوع متقن
+                        </span>
+                        <i />
+                        <span>
+                          <strong>١٩</strong> أسبوعًا
+                        </span>
+                      </div>
+                      <button
+                        className="journey-next"
+                        onClick={() => openWeek(next)}
+                      >
+                        <span className="play-small">
+                          <Play size={14} />
+                        </span>
+                        <span>
+                          <small>خطوتك القادمة · الأسبوع {ar(next.id)}</small>
+                          <strong>{next.title}</strong>
+                        </span>
+                        <ChevronLeft size={18} />
+                      </button>
+                    </section>
+                  </div>
+                  <section className="metrics">
+                    {[
+                      {
+                        icon: FlaskConical,
+                        value: "٥",
+                        label: "مختبرات مترابطة",
+                        tone: "mint",
+                      },
+                      {
+                        icon: BookOpen,
+                        value: "١٩",
+                        label: "أسبوعًا من التعلّم",
+                        tone: "blue",
+                      },
+                      {
+                        icon: Wrench,
+                        value: "١٩",
+                        label: "حالة تشخيص عملية",
+                        tone: "amber",
+                      },
+                      {
+                        icon: ShieldCheck,
+                        value: ar(completed),
+                        label: "مهارات أسبوعية متقنة",
+                        tone: "purple",
+                      },
+                    ].map((m) => (
+                      <div className="metric" key={m.label}>
+                        <span className={`metric-icon ${m.tone}`}>
+                          <m.icon size={21} />
+                        </span>
+                        <div>
+                          <strong>{m.value}</strong>
+                          <span>{m.label}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </section>
+                  <div className="section-heading">
+                    <div>
+                      <h2>
+                        مختبراتك التعليمية
+                        <span className="count-pill">٥ مختبرات</span>
+                      </h2>
+                      <p>
+                        ابدأ بالأساسيات، ثم تقدّم إلى تحديات الصيانة الحقيقية.
+                      </p>
+                    </div>
+                    <button
+                      className="text-link"
+                      onClick={() => navigate("labs")}
+                    >
+                      عرض جميع المختبرات <ArrowLeft size={15} />
+                    </button>
+                  </div>
+                  <div className="labs-grid">
+                    {labs.map((l) => (
+                      <LabCard
+                        key={l.id}
+                        lab={l}
+                        progress={progress}
+                        onOpen={() => {
+                          setView("labs");
+                          setLabFilter(l.id);
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <section className="method-strip">
+                    <div>
+                      <span className="eyebrow">
+                        خطوات صغيرة. مهارة حقيقية.
+                      </span>
+                      <h3>طريقتك إلى الإتقان</h3>
+                    </div>
+                    <div>
+                      {phases.map((p, i) => (
+                        <span key={p.id}>
+                          <b>{ar(i + 1)}</b>
+                          {p.label}
+                          {i < 4 && <ChevronLeft size={14} />}
+                        </span>
+                      ))}
+                    </div>
+                    <button
+                      className="text-link"
+                      onClick={() => navigate("path")}
+                    >
+                      اكتشف المسار <ArrowUpLeft size={16} />
+                    </button>
+                  </section>
+                </>
+              )}
+              {view === "labs" && !labFilter && (
+                <>
+                  <div className="labs-grid catalog">
+                    {labs.map((l) => (
+                      <LabCard
+                        key={l.id}
+                        lab={l}
+                        progress={progress}
+                        onOpen={() => setLabFilter(l.id)}
+                      />
+                    ))}
+                  </div>
+                  <div className="panel curriculum-note">
+                    <BookOpen size={20} />
+                    <p>
+                      التوزيع التعليمي مبدئي وفق التصور المعتمد؛ تُطابق
+                      الموضوعات مع توصيف المقرر الرسمي عند توفره.
+                    </p>
+                  </div>
+                </>
+              )}
+              {(view === "path" || (view === "labs" && labFilter)) && (
+                <>
+                  {labFilter && (
+                    <div className="lab-intro panel">
+                      <img
+                        src={image(labs[labFilter - 1].image + ".svg")}
+                        alt={"مخطط " + labs[labFilter - 1].title}
+                      />
+                      <div>
+                        <span className="eyebrow">المختبر {ar(labFilter)}</span>
+                        <h2>{labs[labFilter - 1].title}</h2>
+                        <p>{labs[labFilter - 1].skill}</p>
+                        <button
+                          className="text-link"
+                          onClick={() => setLabFilter(null)}
+                        >
+                          جميع المختبرات <ArrowLeft size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  <div className="filter-row">
+                    <button
+                      className={!labFilter ? "active" : ""}
+                      onClick={() => setLabFilter(null)}
+                    >
+                      جميع الأسابيع
+                    </button>
+                    {labs.map((l) => (
+                      <button
+                        key={l.id}
+                        className={labFilter === l.id ? "active" : ""}
+                        onClick={() => setLabFilter(l.id)}
+                      >
+                        {l.short}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="week-list">
+                    {filteredWeeks.map((w) => (
+                      <button
+                        className="week-row"
+                        key={w.id}
+                        onClick={() => openWeek(w)}
+                      >
+                        <span
+                          className={`week-number ${progress[w.id]?.mastered ? "complete" : ""}`}
+                        >
+                          {progress[w.id]?.mastered ? (
+                            <Check size={20} />
+                          ) : (
+                            ar(w.id).padStart(2, "٠")
+                          )}
+                        </span>
+                        <span className="week-info">
+                          <small>
+                            المختبر {ar(w.lab)} · الأسبوع {ar(w.id)}
+                          </small>
+                          <strong>{w.title}</strong>
+                          <span>{w.objective}</span>
+                        </span>
+                        <span className="week-phases">
+                          {phases.map((p, i) => (
+                            <i
+                              key={p.id}
+                              title={p.label}
+                              className={
+                                [
+                                  progress[w.id]?.trained,
+                                  progress[w.id]?.discovered,
+                                  progress[w.id]?.applied,
+                                  (progress[w.id]?.quizScore || 0) >= 80,
+                                  progress[w.id]?.mastered,
+                                ][i]
+                                  ? "done"
+                                  : ""
+                              }
+                            />
+                          ))}
+                        </span>
+                        <span className="week-state">
+                          {progress[w.id]?.mastered
+                            ? "متقن"
+                            : progress[w.id]?.trained
+                              ? "قيد التعلّم"
+                              : "ابدأ التعلّم"}
+                        </span>
+                        <ChevronLeft size={19} />
+                      </button>
+                    ))}
+                    {!filteredWeeks.length && (
+                      <div className="empty panel">
+                        <Search size={32} />
+                        <h3>لم نجد موضوعًا بهذا البحث</h3>
+                        <p>جرّب اسم قطعة أو مهارة مثل «الذاكرة».</p>
+                        <button
+                          className="button subtle"
+                          onClick={() => {
+                            setSearch("");
+                            setLabFilter(null);
+                          }}
+                        >
+                          مسح البحث والفلاتر
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+              {view === "results" && (
+                <>
+                  <div className="results-head panel">
+                    <div>
+                      <span className="eyebrow">
+                        {user ? "سجل حسابك المركزي" : "سجل التجربة المحلية"}
+                      </span>
+                      <h2>{ar(completed)} من ١٩ أسبوعًا متقنًا</h2>
+                      <p>
+                        تُحتسب المهارة بعد التدريب والاكتشاف والتطبيق ودرجة ٨٠٪
+                        فأعلى، مع متطلبات الأسبوع الإضافية.
+                      </p>
+                    </div>
+                    <button
+                      className="button secondary"
+                      onClick={exportProgress}
+                    >
+                      <Download size={16} />
+                      تصدير النتائج
+                    </button>
+                  </div>
+                  <div className="labs-grid">
+                    {labs.map((l) => {
+                      const ws = weeks.filter((w) => w.lab === l.id);
+                      const n = ws.filter(
+                        (w) => progress[w.id]?.mastered,
+                      ).length;
+                      const Icon = icons[l.id - 1];
+                      return (
+                        <section className="panel skill-card" key={l.id}>
+                          <span
+                            className="skill-icon"
+                            style={{ color: l.color }}
+                          >
+                            <Icon size={28} />
+                          </span>
+                          <h3>{l.title}</h3>
+                          <p>{l.skill}</p>
+                          <div className="progress-bar">
+                            <span
+                              style={{
+                                width: `${(n / ws.length) * 100}%`,
+                                background: l.color,
+                              }}
+                            />
+                          </div>
+                          <small>
+                            {ar(n)} / {ar(ws.length)} أسابيع متقنة
+                          </small>
+                          <button
+                            className="text-link"
+                            onClick={() =>
+                              openWeek(
+                                ws.find((w) => !progress[w.id]?.mastered) ||
+                                  ws[0],
+                              )
+                            }
+                          >
+                            متابعة المهارة <ArrowLeft size={15} />
+                          </button>
+                        </section>
+                      );
+                    })}
+                  </div>
+                  <div className="panel results-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>الأسبوع</th>
+                          <th>المهارة</th>
+                          <th>أفضل اختبار</th>
+                          <th>الحالة</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {weeks.map((w) => (
+                          <tr key={w.id}>
+                            <td>{ar(w.id)}</td>
+                            <td>
+                              <button onClick={() => openWeek(w)}>
+                                {w.title}
+                              </button>
+                            </td>
+                            <td>
+                              {progress[w.id]?.quizScore
+                                ? ar(progress[w.id].quizScore) + "٪"
+                                : "—"}
+                            </td>
+                            <td>
+                              <span
+                                className={
+                                  progress[w.id]?.mastered
+                                    ? "badge green"
+                                    : "badge"
+                                }
+                              >
+                                {progress[w.id]?.mastered
+                                  ? "متقن"
+                                  : progress[w.id]?.trained
+                                    ? "قيد التعلّم"
+                                    : "لم يبدأ"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+              {view === "library" && (
+                <>
+                  <div className="library-intro panel">
+                    <Images size={28} />
+                    <div>
+                      <h2>شاهد المكوّن. افهم وظيفته.</h2>
+                      <p>
+                        رسوم تعليمية قابلة للتكبير، تُستخدم مع أجهزة المعمل.
+                        صورة الغلاف مولدة للتوضيح وليست مرجعًا لتركيب طراز محدد.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="labs-grid library-grid">
+                    {labs.map((l) => (
+                      <button
+                        className="library-card panel"
+                        key={l.id}
+                        onClick={() => setPhoto(l.image + ".svg")}
+                      >
+                        <img
+                          src={image(l.image + ".svg")}
+                          alt={"مخطط تعليمي: " + l.title}
+                        />
+                        <div>
+                          <h3>{l.title}</h3>
+                          <span>
+                            <ZoomIn size={16} />
+                            تكبير الصورة
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+              {view === "trainer" && user?.role === "trainer" && (
+                <Trainer notify={notify} />
+              )}
             </>
           )}
+          <footer className="footer">
+            <span>
+              <Cpu size={15} />
+              إتقان · المنظومة المهنية التفاعلية لصيانة الحاسب
+            </span>
+            <span>تدرّب ← اكتشف ← طبّق ← اختبر ← أتقن</span>
+          </footer>
+        </main>
+      </div>
+      {notice && (
+        <div className="toast" role="status">
+          <AlertTriangle size={18} />
+          <span>{notice}</span>
+          <IconButton label="إخفاء التنبيه" onClick={() => setNotice("")}>
+            <X size={16} />
+          </IconButton>
         </div>
-      </header>
-
-      <main className="flex-1 flex flex-col overflow-y-auto lg:overflow-hidden relative">
-        {currentScene === 'home' && <HomeScene onStart={setCurrentScene} />}
-        {currentScene === 'theory' && <TheoryScene />}
-        {currentScene === 'quiz' && <QuizScene />}
-        
-        <div className={`flex-1 flex-col lg:flex-row w-full h-full ${currentScene === 'simulation' ? 'flex' : 'hidden'}`}>
-        {/* Left Panel: Instructions */}
-        <aside className="w-full lg:w-80 border-r border-cyan-500/10 bg-slate-900/30 p-6 flex flex-col gap-6 overflow-y-visible lg:overflow-y-auto z-10">
-          <div>
-            <div className="flex justify-between text-[10px] font-mono text-slate-400 mb-2">
-              <span>PROGRESS</span>
-              <span>{Math.round(progress)}%</span>
-            </div>
-            <div className="h-1 w-full bg-slate-700 rounded-full overflow-hidden">
-              <motion.div 
-                className="h-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.5)]"
-                initial={{ width: 0 }}
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
+      )}
+      {login && (
+        <Login
+          healthy={healthy}
+          onClose={() => setLogin(false)}
+          onLogin={(u, p) => {
+            setUser(u);
+            setCentral(p);
+            setLogin(false);
+            setWeek(null);
+            setView("dashboard");
+            notify("تم الدخول وتحميل تقدمك من قاعدة البيانات المركزية.");
+          }}
+        />
+      )}
+      {photo && (
+        <Modal title="الصورة التعليمية" onClose={() => setPhoto(null)} wide>
+          <img
+            className="zoom-photo"
+            src={image(photo)}
+            alt="مخطط تعليمي مكبّر لمكونات وتشخيص الحاسب"
+          />
+          <p className="muted modal-caption">
+            مخطط تعليمي مبسط؛ راجع دليل الجهاز لتحديد المواضع والمواصفات
+            الفعلية.
+          </p>
+        </Modal>
+      )}
+      {assembly && (
+        <Modal
+          title="مختبر التجميع التفاعلي · مستفاد من العمل السابق"
+          onClose={() => setAssembly(false)}
+          wide
+        >
+          <Suspense fallback={<p className="loading">جارٍ تحميل المختبر…</p>}>
+            <AssemblyLab
+              storageKey={`pc-assembly-progress-v3-${user?.trainingNumber || "guest"}`}
+              onComplete={async () => {
+                if (user) await save(api.assembly);
+                else patch(4, { assembly: true });
+              }}
+            />
+          </Suspense>
+        </Modal>
+      )}
+    </div>
+  );
+}
+function LabCard({
+  lab: l,
+  progress,
+  onOpen,
+}: {
+  lab: (typeof labs)[number];
+  progress: Progress;
+  onOpen: () => void;
+}) {
+  const ws = weeks.filter((w) => w.lab === l.id);
+  const n = ws.filter((w) => progress[w.id]?.mastered).length;
+  const Icon = icons[l.id - 1];
+  return (
+    <button
+      className="lab-card"
+      onClick={onOpen}
+      style={{ "--lab-color": l.color } as React.CSSProperties}
+    >
+      <div className="lab-image">
+        <img src={image(l.image + ".svg")} alt={"مخطط تعليمي لـ" + l.title} />
+        <span className="lab-number">المختبر ٠{ar(l.id)}</span>
+        <span className="lab-image-icon">
+          <Icon size={18} />
+        </span>
+      </div>
+      <div className="lab-body">
+        <div className="lab-meta">
+          <span>
+            الأسابيع <b dir="ltr">{l.range}</b>
+          </span>
+          <small>{ar(ws.length)} أسابيع</small>
+        </div>
+        <h3>{l.title}</h3>
+        <p>{l.description}</p>
+        <div className="lab-card-footer">
+          <span
+            className={
+              n === ws.length
+                ? "lab-badge finished"
+                : n
+                  ? "lab-badge started"
+                  : "lab-badge"
+            }
+          >
+            <span />
+            {n === ws.length ? "مكتمل" : n ? "قيد التعلّم" : "متاح للتعلّم"}
+          </span>
+          <span className="card-arrow">
+            <ArrowUpLeft size={19} />
+          </span>
+        </div>
+      </div>
+    </button>
+  );
+}
+function Training({
+  week,
+  onComplete,
+  saving,
+  zoom,
+  done,
+}: {
+  week: Week;
+  onComplete: () => void;
+  saving: boolean;
+  zoom: (s: string) => void;
+  done: boolean;
+}) {
+  const [checks, setChecks] = useState<boolean[]>([false, false, false]);
+  const [audio, setAudio] = useState(false);
+  useEffect(
+    () => () => {
+      window.speechSynthesis?.cancel();
+    },
+    [],
+  );
+  function speak() {
+    if (audio) {
+      window.speechSynthesis?.cancel();
+      setAudio(false);
+      return;
+    }
+    if (!window.speechSynthesis) return;
+    const u = new SpeechSynthesisUtterance(`${week.title}. ${week.lesson}`);
+    u.lang = "ar-SA";
+    u.onend = () => setAudio(false);
+    u.onerror = () => setAudio(false);
+    setAudio(true);
+    window.speechSynthesis.speak(u);
+  }
+  return (
+    <div className="training-layout">
+      <section className="panel lesson">
+        <span className="eyebrow">تدرّب · فهم قبل التجربة</span>
+        <h2>{week.objective}</h2>
+        <p className="lesson-text">{week.lesson}</p>
+        <button className="button subtle" onClick={speak}>
+          <Volume2 size={17} />
+          {audio ? "إيقاف القراءة" : "استمع للشرح"}
+        </button>
+        <div className="lesson-checks">
+          <h3>تحقّق من فهمك</h3>
+          {week.checks.map((c, i) => (
+            <label key={c}>
+              <input
+                type="checkbox"
+                checked={checks[i]}
+                onChange={(e) =>
+                  setChecks(
+                    checks.map((v, j) => (j === i ? e.target.checked : v)),
+                  )
+                }
               />
-            </div>
+              <span>{c}</span>
+            </label>
+          ))}
+        </div>
+        <button
+          className="button primary"
+          disabled={saving || !checks.every(Boolean)}
+          onClick={onComplete}
+        >
+          {saving
+            ? "جارٍ الحفظ…"
+            : done
+              ? "أعد المراجعة وانتقل للاكتشاف"
+              : "فهمت الأساسيات، لنكتشف العطل"}
+          <ArrowLeft size={17} />
+        </button>
+      </section>
+      <figure className="panel lesson-visual">
+        <button
+          onClick={() => zoom(week.visual + ".svg")}
+          aria-label="تكبير الصورة التعليمية"
+        >
+          <img src={image(week.visual + ".svg")} alt={week.caption} />
+          <span>
+            <ZoomIn size={17} />
+            تكبير
+          </span>
+        </button>
+        <figcaption>{week.caption}</figcaption>
+        <div className="visual-note">
+          <ShieldCheck size={19} />
+          <p>
+            طبّق على أجهزة المعمل بإشراف المدرب، واتبع دليل الطراز وإجراءات
+            السلامة.
+          </p>
+        </div>
+      </figure>
+    </div>
+  );
+}
+function Login({
+  healthy,
+  onClose,
+  onLogin,
+}: {
+  healthy: boolean;
+  onClose: () => void;
+  onLogin: (u: User, p: Progress) => void;
+}) {
+  const [number, setNumber] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      const r = await api.login(number, password);
+      onLogin(r.user, r.progress);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Modal title="دخول المتدرب" onClose={onClose}>
+      <form className="login-form" onSubmit={submit}>
+        <span className="login-symbol">
+          <LogIn size={28} />
+        </span>
+        <p>
+          ادخل برقمك التدريبي وكلمة المرور التي سلّمها لك المدرب، لتتابع من أي
+          جهاز.
+        </p>
+        <label>
+          الرقم التدريبي
+          <input
+            dir="ltr"
+            inputMode="numeric"
+            autoComplete="username"
+            pattern="[0-9]{4,14}"
+            required
+            value={number}
+            onChange={(e) =>
+              setNumber(
+                e.target.value.replace(/[٠-٩]/g, (c) =>
+                  String("٠١٢٣٤٥٦٧٨٩".indexOf(c)),
+                ),
+              )
+            }
+            placeholder="أدخل رقمك التدريبي"
+          />
+        </label>
+        <label>
+          كلمة المرور
+          <input
+            dir="ltr"
+            type="password"
+            required
+            maxLength={128}
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="أدخل كلمة المرور"
+          />
+        </label>
+        {error && (
+          <div className="error-message" role="alert">
+            {error}
           </div>
-
-          {!isComplete ? (
-            <div className="flex-1 flex flex-col relative">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]"></div>
-                <h3 className="text-[11px] uppercase font-bold tracking-widest text-cyan-400">OBJ_{currentStep + 1}</h3>
-              </div>
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentStep}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ duration: 0.3 }}
-                  className="flex-1 flex flex-col"
-                >
-                  <div className="bg-slate-800/40 border border-slate-700 p-4 rounded-lg relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-1 text-[8px] font-mono opacity-20">VER_0.42</div>
-                    <p className="text-sm leading-relaxed text-slate-300 mb-3 font-medium">
-                      <span className="text-white font-semibold">Action: </span>
-                      {STEPS[currentStep].instruction}
-                    </p>
-                    <div className="bg-slate-900/50 border border-slate-700 rounded p-3 text-slate-400 flex gap-3 text-xs leading-relaxed mt-2">
-                      <AlertCircle className="shrink-0 text-cyan-500" size={16} />
-                      <p>{STEPS[currentStep].hint}</p>
-                    </div>
-                  </div>
-                </motion.div>
-              </AnimatePresence>
-
-              {/* Feedback messages */}
-              <div className="h-16 mt-6">
-                <AnimatePresence>
-                  {feedback.message && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className={`flex items-center gap-2 p-3 text-xs rounded border font-mono tracking-wide ${
-                        feedback.type === 'success' 
-                          ? 'bg-emerald-900/20 border-emerald-500/30 text-emerald-400' 
-                          : 'bg-red-900/20 border-red-500/30 text-red-500'
-                      }`}
+        )}
+        {!healthy && (
+          <div className="info-message">
+            خادم الحسابات غير متصل حاليًا. يمكنك متابعة التجربة المحلية؛ لن
+            تُحفظ مركزيًا.
+          </div>
+        )}
+        <button className="button primary" disabled={busy}>
+          {busy ? "جارٍ التحقق…" : "الدخول إلى حسابي"}
+          <ArrowLeft size={17} />
+        </button>
+        <button type="button" className="text-link" onClick={onClose}>
+          متابعة التجربة المحلية
+        </button>
+        <small className="muted">
+          لا توجد حسابات افتراضية. يُنشئ المدرب الحسابات، ويتولى إعادة تعيين
+          كلمات المرور.
+        </small>
+      </form>
+    </Modal>
+  );
+}
+function CasePanel({
+  week,
+  stage,
+  connected,
+  onProgress,
+  onLocalPassed,
+  onNext,
+  notify,
+  zoom,
+}: {
+  week: Week;
+  stage: "discover" | "apply";
+  connected: boolean;
+  onProgress: (p: Progress) => void;
+  onLocalPassed: () => void;
+  onNext: () => void;
+  notify: (s: string) => void;
+  zoom: (s: string) => void;
+}) {
+  const [state, setState] = useState<PublicCaseState | null>(null);
+  const [busy, setBusy] = useState(false);
+  const internal = useRef<CaseState | null>(null);
+  async function start() {
+    setBusy(true);
+    try {
+      if (connected) {
+        setState((await api.startCase(week.id, stage)).state);
+      } else {
+        const engine = await import("./cases");
+        internal.current = engine.makeCase(week.id, stage);
+        setState(engine.publicCase(internal.current));
+      }
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function act(id: string) {
+    if (!state) return;
+    setBusy(true);
+    try {
+      if (connected) {
+        const r = await api.action(state.id, id);
+        setState(r.state);
+        onProgress(r.progress);
+      } else {
+        const engine = await import("./cases");
+        internal.current = engine.advanceCase(internal.current!, id);
+        setState(engine.publicCase(internal.current));
+        if (internal.current.complete && internal.current.passed)
+          onLocalPassed();
+      }
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="case-layout">
+      <section className="panel case-main">
+        <div className="case-heading">
+          <span className="badge amber">
+            {stage === "discover" ? "مهمة اكتشاف" : "محاكاة إصلاح"}
+          </span>
+          <span className="muted">الأسبوع {ar(week.id)}</span>
+        </div>
+        <h2>{state?.definition.title || week.title}</h2>
+        <p className="case-brief">
+          {state?.definition.brief ||
+            "استقبل البلاغ، واجمع الأدلة، ثم اختر قرارك بناءً على نتائج الفحص."}
+        </p>
+        {!state ? (
+          <>
+            <div className="case-start-visual">
+              <img src={image(week.visual + ".svg")} alt={week.caption} />
+            </div>
+            <div className="info-message">
+              {stage === "discover"
+                ? "اجمع دليلين ثم اختر الاستنتاج الذي تدعمه النتائج."
+                : "اجمع الأدلة وحدّد السبب ثم أصلح الحالة وأعد الفحص."}{" "}
+              أي إجراء سلامة حرج يمنع الاجتياز، وتحتاج لإعادة المحاولة.
+            </div>
+            <button className="button primary" onClick={start} disabled={busy}>
+              <Play size={17} />
+              {busy ? "جارٍ التحضير…" : "استلام البلاغ وبدء الحالة"}
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              className="case-image"
+              onClick={() => zoom(state.definition.image + ".svg")}
+            >
+              <img
+                src={image(state.definition.image + ".svg")}
+                alt="مخطط توضيحي لمنطقة العطل؛ النتائج الفعلية تظهر في سجل الفحص"
+              />
+              <span>
+                <ZoomIn size={16} />
+                صورة توضيحية · الأدلة في سجل الفحص
+              </span>
+            </button>
+            {!state.complete ? (
+              <>
+                <h3>ما خطوتك التالية؟</h3>
+                <div className="actions-list">
+                  {state.definition.actions.map((a) => (
+                    <button
+                      key={a.id}
+                      disabled={busy || state.done.includes(a.id)}
+                      onClick={() => act(a.id)}
                     >
-                      {feedback.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
-                      {feedback.message}
-                    </motion.div>
+                      {state.done.includes(a.id) ? (
+                        <CheckCircle2 size={18} />
+                      ) : (
+                        <span className="action-dot" />
+                      )}
+                      <span>{a.label}</span>
+                      <ChevronLeft size={16} />
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div
+                className={`case-outcome ${state.passed ? "passed" : "failed"}`}
+              >
+                {state.passed ? (
+                  <ShieldCheck size={34} />
+                ) : (
+                  <RotateCcw size={32} />
+                )}
+                <h3>
+                  {state.passed
+                    ? "قرار تدعمه الأدلة. أحسنت التحقق."
+                    : "المحاولة تحتاج إلى مراجعة"}
+                </h3>
+                <p>
+                  {state.passed
+                    ? "اكتمل الهدف دون خطأ سلامة حرج. انتقل إلى الخطوة التالية."
+                    : state.critical
+                      ? "سُجّل إجراء حرج. راجع السلامة وحماية البيانات ثم أعد المحاولة."
+                      : "كثرت القرارات غير المدعومة. راجع سجل الفحص ثم أعد المحاولة."}
+                </p>
+                <div className="button-row">
+                  {state.passed && (
+                    <button className="button primary" onClick={onNext}>
+                      {stage === "discover"
+                        ? "انتقل للتطبيق"
+                        : "انتقل للاختبار"}
+                      <ArrowLeft size={16} />
+                    </button>
                   )}
-                </AnimatePresence>
+                  <button
+                    className="button subtle"
+                    onClick={start}
+                    disabled={busy}
+                  >
+                    <RotateCcw size={16} />
+                    محاولة جديدة
+                  </button>
+                </div>
               </div>
+            )}
+          </>
+        )}
+      </section>
+      <aside className="panel evidence-panel">
+        <div className="card-heading">
+          <h3>دفتر التشخيص</h3>
+          <BookOpen size={20} />
+        </div>
+        <p className="muted">
+          نتائج فحوصك تظهر هنا. اقرأ الدليل قبل اختيار القرار.
+        </p>
+        <div className="case-counters">
+          <span>
+            <b>{ar(state?.log.length || 0)}</b> إجراءات
+          </span>
+          <span>
+            <b>{ar(state?.mistakes || 0)}</b> قرارات تحتاج مراجعة
+          </span>
+        </div>
+        <div className="evidence-log" aria-live="polite">
+          {state?.log.length ? (
+            state.log.map((l, i) => (
+              <div className={`log-item ${l.ok ? "" : "warning"}`} key={i}>
+                <span>{ar(i + 1)}</span>
+                <div>
+                  <strong>{l.label}</strong>
+                  <p>{l.result}</p>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="empty-log">
+              <Search size={30} />
+              <p>
+                ابدأ بفحص مناسب.
+                <br />
+                كل دليل يقرّبك من السبب.
+              </p>
+            </div>
+          )}
+        </div>
+      </aside>
+    </div>
+  );
+}
+function QuizPanel({
+  week,
+  connected,
+  onProgress,
+  onLocalScore,
+  onNext,
+  notify,
+}: {
+  week: Week;
+  connected: boolean;
+  onProgress: (p: Progress) => void;
+  onLocalScore: (score: number) => void;
+  onNext: () => void;
+  notify: (s: string) => void;
+}) {
+  const [questions, setQuestions] = useState<PublicQuestion[]>([]);
+  const [answers, setAnswers] = useState<Record<string, string[]>>({});
+  const [index, setIndex] = useState(0);
+  const [id, setId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<QuizResult | null>(null);
+  const internal = useRef<Question[]>([]);
+  async function start() {
+    setBusy(true);
+    try {
+      if (connected) {
+        const r = await api.startQuiz(week.id);
+        setQuestions(r.questions);
+        setId(r.id);
+      } else {
+        const engine = await import("./questions");
+        internal.current = engine.pickQuestions(week.lab);
+        setQuestions(engine.exposeQuestions(internal.current));
+      }
+      setAnswers({});
+      setIndex(0);
+      setResult(null);
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function submit() {
+    setBusy(true);
+    try {
+      if (connected) {
+        const r = await api.submitQuiz(id, answers);
+        setResult(r);
+        onProgress(r.progress);
+      } else {
+        const r = (await import("./questions")).grade(
+          internal.current,
+          answers,
+        );
+        setResult(r);
+        onLocalScore(r.score);
+      }
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  const q = questions[index];
+  const complete =
+    questions.length > 0 &&
+    questions.every((q) => {
+      const a = answers[q.id];
+      return (
+        a?.length === (q.kind === "choice" ? 1 : q.options.length) &&
+        new Set(a).size === a.length
+      );
+    });
+  return (
+    <section className="panel quiz-panel">
+      <div className="case-heading">
+        <span className="badge purple">اختبر · قياس الفهم والتطبيق</span>
+        <span className="muted">درجة الاجتياز ٨٠٪</span>
+      </div>
+      {!questions.length ? (
+        <div className="quiz-start">
+          <GraduationCap size={48} />
+          <h2>اختبر فهمك بحالة جديدة</h2>
+          <p>
+            ٥ أسئلة عشوائية من بنك مهارات المختبر: اختيار متعدد، وترتيب،
+            ومطابقة. تختلف الخيارات والأسئلة بين المحاولات؛ وقد تتكرر بعض
+            الأسئلة.
+          </p>
+          <div className="quiz-rules">
+            <span>
+              <Check size={16} />
+              خيارات دون تمييز للإجابة
+            </span>
+            <span>
+              <Check size={16} />
+              تفسير بعد تسليم الاختبار
+            </span>
+            <span>
+              <Check size={16} />
+              تُحفظ أفضل نتيجة
+            </span>
+          </div>
+          <button className="button primary" onClick={start} disabled={busy}>
+            {busy ? "جارٍ إعداد الأسئلة…" : "ابدأ الاختبار"}
+            <ArrowLeft size={17} />
+          </button>
+        </div>
+      ) : result ? (
+        <div className="quiz-result">
+          <div className={`score-medal ${result.score >= 80 ? "passed" : ""}`}>
+            {ar(result.score)}
+            <small>٪</small>
+          </div>
+          <h2>
+            {result.score >= 80
+              ? "فهمك يتقدّم إلى مهارة"
+              : "محاولة مفيدة. راجع ثم جرّب."}
+          </h2>
+          <p>
+            {result.score >= 80
+              ? "اجتزت المعيار المعرفي. راجع أدلة الإتقان ومتطلبات الأسبوع."
+              : "تحتاج إلى ٨٠٪ فأعلى. ستجد تفسير كل إجابة أدناه."}
+          </p>
+          <div className="button-row">
+            {result.score >= 80 && (
+              <button className="button primary" onClick={onNext}>
+                راجع الإتقان <ShieldCheck size={17} />
+              </button>
+            )}
+            <button className="button subtle" onClick={start} disabled={busy}>
+              <RotateCcw size={16} />
+              اختبار جديد
+            </button>
+          </div>
+          <div className="answer-review">
+            {result.results.map((r, i) => (
+              <div key={r.id} className={r.correct ? "correct" : "incorrect"}>
+                <span>
+                  {r.correct ? (
+                    <CheckCircle2 size={20} />
+                  ) : (
+                    <AlertTriangle size={20} />
+                  )}
+                </span>
+                <div>
+                  <h3>
+                    {ar(i + 1)}. {questions.find((q) => q.id === r.id)?.prompt}
+                  </h3>
+                  <p>{r.explanation}</p>
+                  <small>الإجابة: {r.correctTexts.join(" ← ")}</small>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="quiz-nav">
+            {questions.map((item, i) => (
+              <button
+                key={item.id}
+                className={`${i === index ? "active" : ""} ${answers[item.id]?.length ? "answered" : ""}`}
+                onClick={() => setIndex(i)}
+                aria-label={`السؤال ${i + 1}`}
+              >
+                {ar(i + 1)}
+              </button>
+            ))}
+            <span>
+              {ar(index + 1)} من {ar(questions.length)}
+            </span>
+          </div>
+          <span className="eyebrow">
+            {q.kind === "choice"
+              ? "اختر إجابة واحدة"
+              : q.kind === "order"
+                ? "رتّب الخطوات من الأعلى إلى الأسفل"
+                : "اختر مقابلًا مختلفًا لكل وصف"}
+          </span>
+          <h2 className="question-title">{q.prompt}</h2>
+          {q.image && (
+            <img
+              className="quiz-image"
+              src={image(q.image + ".svg")}
+              alt="مخطط تعليمي مرتبط بالسؤال"
+            />
+          )}
+          {q.kind === "choice" ? (
+            <div className="quiz-options">
+              {q.options.map((o, i) => (
+                <label
+                  className={answers[q.id]?.[0] === o.id ? "selected" : ""}
+                  key={o.id}
+                >
+                  <input
+                    type="radio"
+                    name={q.id}
+                    checked={answers[q.id]?.[0] === o.id}
+                    onChange={() => setAnswers({ ...answers, [q.id]: [o.id] })}
+                  />
+                  <span className="option-letter">
+                    {["أ", "ب", "ج", "د"][i]}
+                  </span>
+                  <span>{o.text}</span>
+                </label>
+              ))}
+            </div>
+          ) : q.kind === "match" ? (
+            <div className="matching-options">
+              {q.pairs?.map((pair, i) => (
+                <label key={pair}>
+                  <span>{pair}</span>
+                  <select
+                    aria-label={pair}
+                    value={answers[q.id]?.[i] || ""}
+                    onChange={(e) => {
+                      const a = answers[q.id]
+                        ? [...answers[q.id]]
+                        : Array(q.options.length).fill("");
+                      a[i] = e.target.value;
+                      setAnswers({ ...answers, [q.id]: a });
+                    }}
+                  >
+                    <option value="">اختر المكوّن أو المصطلح</option>
+                    {q.options.map((o) => (
+                      <option value={o.id} key={o.id}>
+                        {o.text}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
             </div>
           ) : (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="flex flex-col items-center justify-center flex-1 text-center border border-emerald-500/30 bg-emerald-900/10 rounded-xl p-6"
-            >
-              <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-                <CheckCircle2 size={32} />
-              </div>
-              <h2 className="text-xl font-bold tracking-widest uppercase text-white mb-2">System Online</h2>
-              <p className="text-slate-400 text-sm mb-6">Diagnostics complete. Operation finished with {mistakes} mistakes.</p>
+            <div className="order-options">
+              {(answers[q.id] || q.options.map((o) => o.id)).map(
+                (oid, i, arr) => {
+                  const move = (to: number) => {
+                    const a = [...arr];
+                    [a[i], a[to]] = [a[to], a[i]];
+                    setAnswers({ ...answers, [q.id]: a });
+                  };
+                  return (
+                    <div key={oid}>
+                      <span className="order-number">{ar(i + 1)}</span>
+                      <span>{q.options.find((o) => o.id === oid)?.text}</span>
+                      <div>
+                        <button
+                          aria-label={"تحريك الخطوة " + ar(i + 1) + " لأعلى"}
+                          disabled={i === 0}
+                          onClick={() => move(i - 1)}
+                        >
+                          <ArrowUp size={17} />
+                        </button>
+                        <button
+                          aria-label={"تحريك الخطوة " + ar(i + 1) + " لأسفل"}
+                          disabled={i === arr.length - 1}
+                          onClick={() => move(i + 1)}
+                        >
+                          <ArrowDown size={17} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                },
+              )}
               <button
-                onClick={() => setShowQuizModal(true)}
-                className="bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-500 text-cyan-400 font-mono text-xs uppercase tracking-widest font-bold py-3 px-6 rounded transition-colors w-full mb-3 shadow-[0_0_15px_rgba(34,211,238,0.2)]"
+                className="button subtle"
+                onClick={() =>
+                  setAnswers({
+                    ...answers,
+                    [q.id]: answers[q.id] || q.options.map((o) => o.id),
+                  })
+                }
               >
-                Take Evaluation Quiz
+                <Check size={16} />
+                {answers[q.id]
+                  ? "الترتيب معتمد، ويمكن تعديله"
+                  : "اعتماد هذا الترتيب"}
               </button>
-              <button 
-                onClick={handleReset}
-                className="border border-emerald-500/50 hover:bg-emerald-500/10 text-emerald-400 font-mono text-xs uppercase tracking-widest font-bold py-3 px-6 rounded transition-colors w-full"
-              >
-                Retry Simulation
-              </button>
-            </motion.div>
+            </div>
           )}
-
-        </aside>
-
-        {/* Center: Drop Zone (PC Case) */}
-        <section className="flex-1 relative bg-[radial-gradient(circle_at_center,_#1e293b_0%,_#020617_100%)] p-8 flex items-center justify-center min-h-[500px]">
-          {/* Grid Overlay */}
-          <div className="absolute inset-0 opacity-[0.03] pointer-events-none z-0" style={{ backgroundImage: 'radial-gradient(#06b6d4 1px, transparent 0)', backgroundSize: '40px 40px' }}></div>
-
-          {/* Setup Case Display */}
-          <div className="w-full max-w-[450px] aspect-[4/5] border border-cyan-500/20 rounded-xl bg-slate-900/40 backdrop-blur-sm p-5 shadow-2xl relative flex flex-col gap-4 z-10">
-            {/* Case Silhouette */}
-            <div className="absolute inset-4 border-2 border-slate-700/50 rounded-lg pointer-events-none"></div>
-
-            {/* Motherboard slot */}
-            <div 
-              className={`flex-1 rounded border border-dashed relative transition-colors flex flex-col p-4 z-10 ${
-                installedParts.includes('motherboard') 
-                  ? 'border-slate-700 bg-slate-800/60 shadow-[inset_0_4px_20px_rgba(0,0,0,0.5)]' 
-                  : STEPS[currentStep]?.id === 'motherboard' && !isComplete
-                    ? 'border-cyan-400/50 bg-cyan-400/5'
-                    : 'border-slate-700 bg-slate-800/20'
-              }`}
-              onDragOver={handleDragOver}
-              onDrop={(e) => handleDragDrop(e, 'motherboard')}
-              onClick={(e) => handleSlotClick(e, 'motherboard')}
-              role="button"
-              tabIndex={selectedPart ? 0 : -1}
-              aria-label="Motherboard Slot"
+          <div className="quiz-bottom">
+            <button
+              className="button subtle"
+              disabled={index === 0}
+              onClick={() => setIndex(index - 1)}
             >
-              {installedParts.includes('motherboard') && (
-                <motion.div 
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className="absolute inset-3 border border-slate-700/50 bg-slate-800/30 rounded pointer-events-none flex"
-                >
-                  {/* Slots inside motherboard */}
-                  
-                  {/* CPU Area */}
-                  <div className="absolute top-10 left-[25%] w-[80px] h-[80px]">
-                    <div 
-                      className={`w-full h-full rounded border border-dashed transition-colors flex items-center justify-center relative group ${
-                        installedParts.includes('cpu') 
-                        ? 'border-slate-600 bg-slate-800/80 shadow-[inset_0_4px_10px_rgba(0,0,0,0.5)]' 
-                        : STEPS[currentStep]?.id === 'cpu' && !isComplete
-                          ? 'border-cyan-400/50 bg-cyan-400/5 pointer-events-auto'
-                          : 'border-slate-700 pointer-events-auto'
-                      }`}
-                      onDragOver={handleDragOver}
-                      onDrop={(e) => handleDragDrop(e, 'cpu')}
-                      onClick={(e) => handleSlotClick(e, 'cpu')}
-                      role="button"
-                      tabIndex={selectedPart ? 0 : -1}
-                      aria-label="CPU Socket"
-                    >
-                      {!installedParts.includes('cpu') && STEPS[currentStep]?.id === 'cpu' && !isComplete && (
-                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[8px] font-mono text-cyan-400 bg-slate-900 px-1 py-0.5 border border-cyan-400/30 shadow-[0_0_8px_rgba(34,211,238,0.2)]">CPU_SOCKET</div>
-                      )}
-                      
-                      {installedParts.includes('cpu') && (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                          <Cpu size={40} className="text-cyan-600/50" />
-                        </motion.div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* RAM Area */}
-                  <div className="absolute top-8 right-[25%] w-[45px] h-[100px] flex flex-col gap-1">
-                    <div 
-                      className={`w-full h-full rounded border border-dashed transition-colors flex items-center justify-center ${
-                        installedParts.includes('ram') 
-                        ? 'border-slate-600 bg-slate-800/80 shadow-[inset_0_4px_10px_rgba(0,0,0,0.5)]' 
-                        : STEPS[currentStep]?.id === 'ram' && !isComplete
-                          ? 'border-cyan-400/50 bg-cyan-400/5 pointer-events-auto'
-                          : 'border-slate-700 pointer-events-auto'
-                      }`}
-                      onDragOver={handleDragOver}
-                      onDrop={(e) => handleDragDrop(e, 'ram')}
-                      onClick={(e) => handleSlotClick(e, 'ram')}
-                      role="button"
-                      tabIndex={selectedPart ? 0 : -1}
-                      aria-label="RAM Slots"
-                    >
-                       {installedParts.includes('ram') && (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                          <div className="w-[8px] h-[70px] bg-cyan-500/80 rounded-sm mx-auto shadow-[0_0_10px_rgba(34,211,238,0.5)]"></div>
-                        </motion.div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* GPU Slot */}
-                  <div className="absolute bottom-12 left-10 right-10 h-[50px]">
-                    <div 
-                      className={`w-full h-full rounded border border-dashed transition-colors flex items-center justify-center relative ${
-                        installedParts.includes('gpu') 
-                        ? 'border-slate-600 bg-slate-800/80 shadow-inner translate-y-[-2px]' 
-                        : STEPS[currentStep]?.id === 'gpu' && !isComplete
-                          ? 'border-cyan-400/50 bg-cyan-400/5 pointer-events-auto'
-                          : 'border-slate-700 pointer-events-auto'
-                      }`}
-                      onDragOver={handleDragOver}
-                      onDrop={(e) => handleDragDrop(e, 'gpu')}
-                      onClick={(e) => handleSlotClick(e, 'gpu')}
-                      role="button"
-                      tabIndex={selectedPart ? 0 : -1}
-                      aria-label="GPU Slot"
-                    >
-                       {installedParts.includes('gpu') && (
-                        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-4 text-cyan-600/50">
-                          <Video size={24} />
-                          <span className="font-mono text-xs uppercase font-bold tracking-widest">PCIe RTX</span>
-                        </motion.div>
-                      )}
-                    </div>
-                  </div>
-
-                </motion.div>
-              )}
-            </div>
-
-            {/* PSU slot */}
-            <div 
-               className={`h-[120px] rounded border border-dashed flex items-center justify-center transition-colors relative z-10 ${
-                installedParts.includes('psu') 
-                  ? 'border-slate-700 bg-slate-800/60 shadow-[inset_0_4px_20px_rgba(0,0,0,0.5)]' 
-                  : STEPS[currentStep]?.id === 'psu' && !isComplete
-                    ? 'border-cyan-400/50 bg-cyan-400/5'
-                    : 'border-slate-700 bg-slate-800/20'
-              }`}
-              onDragOver={handleDragOver}
-              onDrop={(e) => handleDragDrop(e, 'psu')}
-              onClick={(e) => handleSlotClick(e, 'psu')}
-              role="button"
-              tabIndex={selectedPart ? 0 : -1}
-              aria-label="PSU Bay"
-            >
-              {installedParts.includes('psu') && (
-                <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex items-center gap-4 text-slate-500">
-                  <Power size={32} />
-                  <span className="font-mono text-[10px] tracking-widest font-bold uppercase">Sys_Power</span>
-                </motion.div>
-              )}
-            </div>
+              السابق
+            </button>
+            {index < questions.length - 1 ? (
+              <button
+                className="button secondary"
+                onClick={() => setIndex(index + 1)}
+              >
+                السؤال التالي <ArrowLeft size={16} />
+              </button>
+            ) : (
+              <button
+                className="button primary"
+                disabled={!complete || busy}
+                onClick={submit}
+              >
+                {busy ? "جارٍ التصحيح…" : "تسليم الاختبار"}
+              </button>
+            )}
           </div>
-        </section>
-
-        {/* Right Panel: Inventory */}
-        <aside className="w-full lg:w-72 bg-slate-900/30 border-l border-cyan-500/10 flex flex-col z-10 box-border">
-          <div className="p-4 border-b border-cyan-500/10 bg-slate-900/50">
-            <h3 className="font-mono text-xs uppercase tracking-widest text-slate-500">Component List</h3>
-          </div>
-          <div className="p-4 flex-1 overflow-y-visible lg:overflow-y-auto grid grid-cols-2 lg:grid-cols-1 gap-3 items-start content-start">
-            {Object.values(PARTS).map((part) => {
-              const isInstalled = installedParts.includes(part.id);
-              const isNext = !isComplete && STEPS[currentStep].id === part.id;
-              
-              return (
-                <motion.div
-                  key={part.id}
-                  layoutId={`inv-${part.id}`}
-                  draggable={!isInstalled}
-                  onDragStart={(e) => handleDragStart(e as unknown as React.DragEvent, part.id)}
-                  role="button"
-                  tabIndex={isInstalled ? -1 : 0}
-                  onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          if (!isInstalled) setSelectedPart(selectedPart === part.id ? null : part.id);
-                      }
-                  }}
-                  onClick={() => {
-                      if (!isInstalled) setSelectedPart(selectedPart === part.id ? null : part.id);
-                  }}
-                  className={`
-                    p-3 rounded-lg flex flex-col md:flex-row lg:flex-row items-center gap-3 border transition-all group select-none focus:outline-none focus:ring-2 focus:ring-cyan-500 relative
-                    ${isInstalled 
-                      ? 'bg-slate-800/20 border-slate-800/40 opacity-40 grayscale cursor-not-allowed' 
-                      : selectedPart === part.id
-                        ? 'border-cyan-400 bg-cyan-900/30 shadow-[0_0_15px_rgba(34,211,238,0.2)] scale-[0.98]'
-                        : 'bg-slate-800/40 border-slate-700 opacity-80 cursor-grab hover:bg-cyan-500/5 hover:border-cyan-500/40 hover:opacity-100 active:cursor-grabbing'
-                    }
-                    ${isNext && !isInstalled && selectedPart !== part.id ? 'ring-1 ring-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.1)]' : ''}
-                  `}
-                  whileHover={!isInstalled && selectedPart !== part.id ? { y: -1 } : {}}
-                  whileTap={!isInstalled && selectedPart !== part.id ? { scale: 0.98 } : {}}
-                >
-                  {isInstalled && (
-                    <div className="absolute top-2 right-2 text-[8px] font-mono uppercase text-slate-600">Installed</div>
-                  )}
-                  <div className={`w-12 h-12 flex items-center justify-center border border-transparent rounded transition-colors bg-slate-900/50 ${!isInstalled ? 'group-hover:border-cyan-500/30' : ''}`}>
-                    <div className={`transition-colors ${isInstalled ? 'text-slate-600' : selectedPart === part.id ? 'text-cyan-400' : 'text-slate-500 group-hover:text-cyan-400'}`}>
-                      {part.icon}
-                    </div>
-                  </div>
-                  <span className={`font-mono text-[11px] uppercase tracking-wide font-bold transition-colors ${selectedPart === part.id ? 'text-cyan-300' : isInstalled ? 'text-slate-600' : 'text-slate-400 group-hover:text-cyan-300'}`}>
-                    {part.name}
-                  </span>
-                </motion.div>
-              );
-            })}
-          </div>
-        </aside>
-        </div>
-      </main>
-
-      {/* Popups / Modals */}
-      {infoModalPart && <InfoModal part={PARTS[infoModalPart]} onClose={() => setInfoModalPart(null)} />}
-      {showQuizModal && <QuizModal onClose={() => setShowQuizModal(false)} />}
-    </div>
+          {index === questions.length - 1 && !complete && (
+            <p className="muted">
+              أكمل جميع الإجابات، واعتمد الترتيب، وتأكد من عدم تكرار خيارات
+              المطابقة.
+            </p>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+function Report({
+  onSave,
+  done,
+  saved,
+}: {
+  onSave: (r: Record<string, string>) => Promise<boolean>;
+  done: boolean;
+  saved?: string;
+}) {
+  const [values, setValues] = useState(() => {
+    const blank = { symptom: "", cause: "", action: "", verification: "" };
+    try {
+      const data = JSON.parse(saved || "{}");
+      for (const key of Object.keys(blank) as (keyof typeof blank)[]) {
+        if (typeof data[key] === "string") blank[key] = data[key];
+      }
+    } catch {
+      /* Earlier local drafts remain saved in the progress record. */
+    }
+    return blank;
+  });
+  const [busy, setBusy] = useState(false);
+  return (
+    <form
+      className="panel report-form"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setBusy(true);
+        try {
+          await onSave(values);
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <span className="eyebrow">توثيق مهني</span>
+      <h2>تقرير الصيانة</h2>
+      <p>اكتب تفسيرك لنتيجة المحاكاة. لا يُطلب رفع صور لإثبات الإنجاز.</p>
+      {[
+        { id: "symptom", label: "العرض المبلغ عنه" },
+        { id: "cause", label: "السبب والأدلة" },
+        { id: "action", label: "الإجراء المنفذ" },
+        { id: "verification", label: "نتيجة التحقق والتوصية الوقائية" },
+      ].map((f) => (
+        <label key={f.id}>
+          {f.label}
+          <textarea
+            minLength={8}
+            maxLength={1000}
+            required
+            value={values[f.id as keyof typeof values]}
+            onChange={(e) => setValues({ ...values, [f.id]: e.target.value })}
+            rows={2}
+          />
+        </label>
+      ))}
+      <button className="button primary" disabled={busy}>
+        {busy ? "جارٍ الحفظ…" : done ? "تحديث التقرير" : "حفظ التقرير"}
+      </button>
+      {done && (
+        <span className="badge green">
+          <Check size={14} />
+          يوجد تقرير محفوظ ضمن تقدم الأسبوع
+        </span>
+      )}
+    </form>
+  );
+}
+function Trainer({ notify }: { notify: (s: string) => void }) {
+  const [rows, setRows] = useState<
+    { name: string; trainingNumber: string; progress: Progress }[]
+  >([]);
+  const [busy, setBusy] = useState(true);
+  const [failed, setFailed] = useState(false);
+  async function load() {
+    setBusy(true);
+    setFailed(false);
+    try {
+      setRows((await api.trainer()).trainees);
+    } catch (e) {
+      setFailed(true);
+      notify((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  useEffect(() => {
+    load();
+  }, []);
+  return (
+    <section className="panel results-table">
+      <div className="section-heading">
+        <h2>متابعة الحسابات المركزية</h2>
+        <button className="button subtle" onClick={load} disabled={busy}>
+          <RotateCcw size={16} />
+          تحديث
+        </button>
+      </div>
+      {busy ? (
+        <p className="loading">جارٍ تحميل النتائج…</p>
+      ) : failed ? (
+        <p>تعذر تحميل النتائج. أعد المحاولة.</p>
+      ) : rows.length ? (
+        <table>
+          <thead>
+            <tr>
+              <th>المتدرب</th>
+              <th>الرقم التدريبي</th>
+              <th>أسابيع متقنة</th>
+              <th>تقارير الورشة</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.trainingNumber}>
+                <td>{r.name}</td>
+                <td>{r.trainingNumber}</td>
+                <td>
+                  {ar(
+                    Object.values(r.progress).filter((p) => p.mastered).length,
+                  )}{" "}
+                  / ١٩
+                </td>
+                <td>
+                  {ar(Object.values(r.progress).filter((p) => p.report).length)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p className="empty">
+          لم تُنشأ حسابات متدربين بعد. ينشئها مسؤول الخادم بأداة الحسابات.
+        </p>
+      )}
+    </section>
   );
 }
