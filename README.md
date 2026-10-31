@@ -1,45 +1,76 @@
-# PC Assembly Virtual Lab
+# إتقان | المنظومة المهنية التفاعلية لصيانة الحاسب
 
-## About the Website
-The PC Assembly Virtual Lab is an interactive educational web application designed to teach users how to assemble a computer from scratch. It acts as a digital laboratory where users can learn the theory behind computer components and safely practice assembling a working system without the risk of damaging real hardware.
+تطوير داخل مستودع **Virtual-Lab-PC-Assembly** الحالي. احتُفظ بمنطق مختبر التجميع السابق، وعُرّب ودُمج في الأسبوع الرابع؛ لم يُنشأ مشروع بديل.
 
-## Features Provided
-- **Interactive Drag & Drop:** Learn standard PC component placements with an intuitive drag-and-drop interface to place components (CPU, RAM, GPU, PSU) onto a virtual motherboard.
-- **Audio Instructions:** Built-in voice instructions guide you through the assembly sequence (can be toggled on/off).
-- **Theory Learning Module:** Comprehensive definitions and guides about main PC components and their functions.
-- **Knowledge Quiz:** A multiple-choice evaluation feature with automated scoring and instant feedback to test your understanding.
-- **Progress & Mistake Tracking:** The simulation actively tracks your attempts, placement mistakes, and automatically provides visual sequence feedback.
+## الوظائف المنفذة
 
-## User Manual (How to Use)
-1. **Home:** When you open the website, you will see a simulated demo. Click "Start System" to begin.
-2. **Theory:** Read through the cards explaining each component (Motherboard, CPU, RAM, GPU, PSU). Click "Enter Simulation Lab" when ready.
-3. **Simulation (Drag & Drop):**
-   - Look at the instruction on the left side to see which component is needed.
-   - On the right side, click and hold on the correct component.
-   - Drag the component to the matching slot on the motherboard on the left and release your mouse button to drop it.
-   - If correct, it will snap into place. If wrong, it will bounce back and log a mistake.
-   - Turn on/off audio using the speaker icon in the top right.
-4. **Quiz:** After successfully assembling the PC, take the quiz. Select your answers to see if you have truly mastered the basics of PC assembly.
+- واجهة عربية RTL تستجيب للحاسب والجوال، مع لوحة تعلم وبحث ومسار أسبوعي ومكتبة صور قابلة للتكبير ونتائج قابلة لتصدير CSV.
+- 19 أسبوعًا في خمسة مختبرات: التجميع، والطاقة والإقلاع، والذاكرة والتخزين، والنظام والأداء، وورشة الصيانة المهنية.
+- لكل أسبوع: **تدرّب ← اكتشف ← طبّق ← اختبر ← أتقن**. التدريب متاح للمراجعة، وتُفتح أنشطة الأسبوع بالتتابع.
+- 19 حالة تشخيص مختلفة حسب موضوع الأسبوع؛ أدلة ثم استنتاج ثم إصلاح وتحقق. ترتيب الإجراءات يتغير. الحالات نفسها محددة وليست مولدة عشوائيًا. الخطأ الحرج يمنع الاجتياز، وأكثر من قرارين غير مدعومين يحتاج إعادة المحاولة.
+- بنك 40 سؤالًا؛ كل اختبار يسحب ثلاثة أسئلة اختيار متعدد عشوائيًا وسؤال ترتيب وسؤال مطابقة، مع خلط ترتيب الأسئلة والخيارات. التصحيح والتفسير بعد التسليم، دون ألوان تكشف الإجابة مسبقًا.
+- الإتقان: التدريب والاكتشاف والتطبيق و80% فأعلى في الاختبار، مع التجميع للأسبوع 4 والتقرير لأسابيع 16–19. هذا إتمام أنشطة المنصة؛ اعتماد التطبيق على أجهزة المعمل من مسؤولية المدرب.
+- وضع تجربة محلية واضح، وحسابات مستقلة بالرقم التدريبي وكلمة المرور، وخادم API وقاعدة SQLite مركزية عند تشغيلهما. لا يُدمج تقدم الضيف بالحساب تلقائيًا.
+- لوحة مدرب تلخص تقدم الحسابات المركزية. إدارة إنشاء الحسابات وإعادة تعيين كلمات المرور من أداة الخادم.
 
-## Dependencies to Download
-To run this modern web application on your local PC, you must have the following downloaded and installed:
-- **Node.js** (Version 18 or newer): Download from [nodejs.org](https://nodejs.org/)
+**التوزيع مبدئي وفق التصور المعتمد؛ توصيف المقرر الرسمي وطرازات أجهزة المعمل لم يُقدّما بعد.** الصور توضيحية محلية؛ الغلاف مولد والرسوم أصلية مبسطة. لا يُطلب رفع صور لإثبات الإنجاز.
 
-## Download, Setup & Run Instructions
-Since this is a modern web application, you cannot simply double-click `index.html` to open it. Follow these steps to run it properly:
+## تشغيل المشروع الحالي
 
-1. **Download:** Download the `.zip` file provided by your friend and extract (unzip) it into a folder on your computer.
-2. **Open Terminal:** Open your Command Prompt (Windows), PowerShell, or Terminal (Mac/Linux).
-3. **Navigate to Folder:** Use the `cd` command to navigate to the folder where you extracted the project.
-   ```bash
-   cd path/to/extracted/folder
-   ```
-4. **Install App Dependencies:** Run the following command to download all required packages for the app:
-   ```bash
-   npm install
-   ```
-5. **Run the Application:** Start the local server by typing:
-   ```bash
-   npm run dev
-   ```
-6. **Open Website:** Open your favorite web browser (Chrome, Edge, Firefox) and go to the address shown in your terminal (usually `http://localhost:5173` or `http://localhost:3000`).
+يتطلب **Node.js 24 أو أحدث** (لاستخدام SQLite المدمجة). من جذر المستودع:
+
+```sh
+npm ci
+npm run server
+```
+
+في طرفية أخرى:
+
+```sh
+npm run dev
+```
+
+افتح عنوان Vite المحلي. يمرر Vite طلبات `/api` إلى الخادم على 127.0.0.1:3001. لا توجد حسابات افتراضية أو كلمات مرور جاهزة.
+
+### إنشاء حساب أو إعادة تعيينه
+
+أدخل كلمة المرور عبر stdin؛ لا تضعها في الوسائط أو ملفات Git أو المحادثات. في Bash:
+
+```sh
+read -r -s -p 'Password (10–128 characters): ' PC_LAB_PASSWORD
+printf '\n'
+printf '%s' "$PC_LAB_PASSWORD" | npm run account -- 123456 'اسم المتدرب' trainee
+unset PC_LAB_PASSWORD
+```
+
+لحساب المدرب استبدل `trainee` بـ`trainer`. استخدام الرقم الموجود يحدّث بياناته وكلمة مروره ويلغي جلساته القائمة. لا يحذف تقدمه.
+
+## الاختبار والبناء
+
+```sh
+npm test
+npm run build
+```
+
+الاختبارات تنشئ قاعدة مؤقتة وبيانات صناعية، وتتحقق من قواعد الإتقان والتصحيح وعزل الحسابات ومنع إعادة التسليم واستمرار البيانات بعد إعادة فتح الخادم. `dist/` ناتج واجهة فقط، ولا يحتوي قاعدة البيانات أو الحسابات.
+
+## GitHub Pages والخادم المركزي
+
+راجع [دليل النشر](DEPLOYMENT_AR.md). واجهة GitHub Pages تعمل بالتجربة المحلية حتى تضبط `VITE_API_URL` على خادم API دائم وتعيد بناءها. لا يمكن لـGitHub Pages تشغيل Node أو SQLite.
+
+## الملفات الرئيسية
+
+| الملف                 | الغرض                                                     |
+| --------------------- | --------------------------------------------------------- |
+| `src/App.tsx`         | لوحة التعلم وشاشات التدريب والحالات والاختبارات والتقارير |
+| `src/AssemblyLab.tsx` | مختبر التجميع المستفاد من النسخة السابقة                  |
+| `src/curriculum.ts`   | الأسابيع والمختبرات وقواعد الإتقان                        |
+| `src/cases.ts`        | محرك الحالة التشخيصية ومحتوى الحالات                      |
+| `src/questions.ts`    | بنك الأسئلة والسحب والتصحيح                               |
+| `src/api.ts`          | اتصال الواجهة بالخادم والمصادقة                           |
+| `server/`             | API والمصادقة وقاعدة البيانات وأداة الحسابات              |
+| `public/images/`      | الصور والرسوم التعليمية المحلية                           |
+| `tests/core.test.ts`  | اختبارات المحرك والتكامل والأمان                          |
+| `.github/workflows/`  | التحقق والنشر إلى Pages                                   |
+
+التوثيق الإنجليزي القديم محفوظ باسم `Technical_Documentation.txt` للرجوع التاريخي، ولا يصف كامل النسخة الحالية. لا توجد استدعاءات Gemini؛ أزيلت إعداداته واعتمادياته غير المستخدمة.

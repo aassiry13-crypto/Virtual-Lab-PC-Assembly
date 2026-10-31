@@ -1,8 +1,6 @@
 {
-  "name": "Virtual Lab PC Assembly",
-  "description": "An interactive drag-and-drop PC assembly learning experience.",
+  "name": "إتقان | مختبرات صيانة الحاسب",
+  "description": "منظومة مهنية تفاعلية: 19 أسبوعًا وخمسة مختبرات ومحاكاة تشخيص واختبارات مهارية.",
   "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
+  "majorCapabilities": []
 }
